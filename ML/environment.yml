@@ -16,10 +16,11 @@ dependencies:
   - tqdm
   - imageio
   - nibabel
-  - labelme
   - pydicom
   - pillow
   - jupyter
   - jupyterlab
   - ipython
+  - pip:
+    - labelme
   
