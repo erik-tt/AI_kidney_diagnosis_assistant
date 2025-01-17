@@ -1,2 +1,2 @@
-# AI_kidney_diagnosis_assistant
+# AI kidney diagnosis assistant
 Master thesis project at the department of computer science at NTNU. 
