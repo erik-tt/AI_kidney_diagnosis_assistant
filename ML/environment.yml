@@ -1,0 +1,26 @@
+name: AI-diagnostic
+channels:
+  - defaults
+  - conda-forge
+  - anaconda
+dependencies:
+  - python=3.12
+  - scikit-learn
+  - numpy
+  - pandas
+  - pytorch
+  - torchvision
+  - matplotlib
+  - seaborn
+  - opencv
+  - tqdm
+  - imageio
+  - nibabel
+  - pydicom
+  - pillow
+  - jupyter
+  - jupyterlab
+  - ipython
+  - pip:
+    - labelme
+  
