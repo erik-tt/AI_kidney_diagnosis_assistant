@@ -6,6 +6,7 @@ channels:
 dependencies:
   - python=3.12
   - scikit-learn
+  - monai
   - numpy
   - pandas
   - pytorch
@@ -21,6 +22,7 @@ dependencies:
   - jupyter
   - jupyterlab
   - ipython
+  - pip
   - pip:
     - labelme
   
