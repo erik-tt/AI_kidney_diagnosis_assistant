@@ -10,6 +10,32 @@ from torch.utils.tensorboard import SummaryWriter
 import os 
 from datetime import datetime
 
+def plot_val_image(model_output, image, label):
+
+    model_output = model_output.unsqueeze(0)
+
+    model_label = torch.argmax(model_output, dim=1).squeeze(0)
+
+    label_remove_one_hot = model_label.cpu().numpy()
+    label_cpu = label.cpu().numpy()
+    image_cpu = image.cpu().numpy()
+
+    plt.figure(figsize=(10, 10))
+
+    plt.subplot(1, 2, 1)
+    plt.title("Ground Truth")
+    plt.imshow(label_cpu[0, :, :], cmap='gray')
+    plt.axis('off')
+
+    plt.subplot(1, 2, 2)
+    plt.title("Model Output")
+    plt.imshow(label_remove_one_hot, cmap='gray')
+    plt.axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
+
 def train_loop(model, 
                epochs: int, 
                train_dataloader: DataLoader, 
@@ -49,5 +75,12 @@ def train_loop(model,
 
                         loss = loss_function(outputs, labels)
                         validation_losses.append(loss.item())
+
+                        if (epoch + 1) % 10 == 0:
+                             #writer.add_figure("ground truth vs")
+                            plot_val_image(outputs[0], images[0], labels[0])
+                            
+    
+                        
             writer.add_scalar("Training loss", np.mean(training_losses), epoch)
             writer.add_scalar("Validation loss", np.mean(validation_losses), epoch)
