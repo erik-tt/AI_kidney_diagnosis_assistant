@@ -1,9 +1,7 @@
 from monai.networks.nets import SwinUNETR, UNet
 import torch
 
-def model_selector(model_name :str):
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def model_selector(model_name :str, device: torch.device):
 
     if model_name == "UNet":
         return UNet(
