@@ -2,8 +2,10 @@ from .file_reader import FileReader
 from typing import List
 from sklearn.model_selection import train_test_split
 from monai.data import CacheDataset
+from config.transforms_selector import transforms_selector
 
-def create_dataset(paths: List[str],  
+def create_dataset(paths: List[str],
+                   transforms_name: str,   
                    test_size: int = 0.2, 
                    random_state: int = 42, 
                    shuffle: bool = True): ## Add transforms
@@ -21,9 +23,11 @@ def create_dataset(paths: List[str],
         shuffle=shuffle         
     )
     
+    train_transforms, val_transforms = transforms_selector(transforms_name)
+
     # Check if cache fails
-    train_dataset = CacheDataset(train_data)
-    test_dataset = CacheDataset(test_data)
+    train_dataset = CacheDataset(train_data, train_transforms)
+    test_dataset = CacheDataset(test_data, val_transforms)
 
     return train_dataset, test_dataset
 
