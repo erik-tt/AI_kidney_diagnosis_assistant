@@ -16,11 +16,11 @@ def main(params):
     log_dir = os.path.join("./runs", f"experiment_{timestamp}")
     writer = SummaryWriter(log_dir=log_dir)
 
-    writer.add_text("RunInfo", f"Model: {params.model}", global_step=0)
-    writer.add_text("RunInfo", f"Transforms: {params.transforms}", global_step=0)
-    writer.add_text("RunInfo", f"Batch size: {params.batch_size}", global_step=0)
-    writer.add_text("RunInfo", f"Learning rate: {params.lr}", global_step=0)
-    writer.add_text("RunInfo", f"Data directories: {params.data}", global_step=0)
+    writer.add_text("Model", f"Model: {params.model}", global_step=0)
+    writer.add_text("Transforms", f"Transforms: {params.transforms}", global_step=0)
+    writer.add_text("Batch size", f"Batch size: {params.batch_size}", global_step=0)
+    writer.add_text("Learning rate", f"Learning rate: {params.lr}", global_step=0)
+    writer.add_text("Datadir", f"Data directories: {params.data}", global_step=0)
 
     train_dataset, test_dataset = create_dataset(params.data, params.transforms)
 
