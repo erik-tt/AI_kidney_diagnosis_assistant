@@ -8,16 +8,16 @@ def create_dataset(paths: List[str],
                    transforms_name: str,   
                    test_size: int = 0.2, 
                    random_state: int = 42, 
-                   shuffle: bool = True): ## Add transforms
+                   shuffle: bool = True):
     
     file_reader = FileReader("../data")
     dataset = []
     for path in paths:
         segmentation_data = file_reader.get_segmentation_file_paths(path)
-        dataset.append(segmentation_data)
+        dataset.extend(segmentation_data)
 
     train_data, test_data = train_test_split(
-        segmentation_data,
+        dataset,
         test_size=test_size,      
         random_state=random_state,     
         shuffle=shuffle         
