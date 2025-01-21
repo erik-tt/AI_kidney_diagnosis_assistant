@@ -21,10 +21,12 @@ from monai.transforms import (
     ToTensord,
     AsDiscrete
 )
+from monai.data import DataLoader
 
-def train_loop(model, train_dataloader, val_dataloader):
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def train_loop(model, 
+               train_dataloader: DataLoader, 
+               val_dataloader: DataLoader, 
+               device: torch.device):
 
     loss_function = DiceCELoss(to_onehot_y=True, softmax=True)
     optimizer = torch.optim.Adam(model.parameters())
@@ -44,7 +46,7 @@ def train_loop(model, train_dataloader, val_dataloader):
             for batch_data in tqdm(train_dataloader):
                 images, labels = batch_data["image"].to(device), batch_data["label"].to(device) 
                 optimizer.zero_grad()
-                outputs = model(images)            
+                outputs = model(images)
                 loss = loss_function(outputs, labels)
                 loss.backward()
                 optimizer.step()
