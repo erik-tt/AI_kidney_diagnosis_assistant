@@ -29,10 +29,10 @@ if __name__ == "__main__":
     parser.add_argument("--data", nargs='+', default=["drsprg/post", "drsbru/post"], help="List of data directories")
     parser.add_argument("--transforms")
     parser.add_argument("--model", default="UNet")
-    parser.add_argument("--batch_size", default=4)
-    parser.add_argument("--num_workers", default=0)
-    parser.add_argument("--num_epochs", default=10)
-    parser.add_argument("--lr", default=0.001)
+    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--num_workers", type=int, default=0)
+    parser.add_argument("--num_epochs", type=int, default=10)
+    parser.add_argument("--lr", type=int, default=0.001)
 
     args = parser.parse_args()
 
