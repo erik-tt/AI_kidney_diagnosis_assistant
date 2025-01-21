@@ -12,6 +12,7 @@ def main(params):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    os.makedirs("./runs", exist_ok=True)
     log_dir = os.path.join("./runs", f"experiment_{timestamp}")
     writer = SummaryWriter(log_dir=log_dir)
 
