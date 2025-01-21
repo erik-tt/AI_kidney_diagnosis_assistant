@@ -23,6 +23,7 @@ dependencies:
   - jupyterlab
   - ipython
   - pip
+  - tensorboard
   - pip:
     - labelme
   
