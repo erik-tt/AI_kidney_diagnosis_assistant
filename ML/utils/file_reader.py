@@ -27,8 +27,19 @@ class FileReader:
 
         for root, _, files in walk_iter:
             absolute_path = os.path.abspath(root)
-            image_path = os.path.join(absolute_path, files[0])
-            label_path = os.path.join(absolute_path, files[1])
+            
+            image_path = None
+            label_path = None
+
+            for file in files:
+                if "image" in file:
+                    image_path = os.path.join(absolute_path, file)
+                elif "label" in file:
+                    label_path = os.path.join(absolute_path, file)
+                else:
+                    raise ValueError("data does not contain label or image")
+                
+        
             data.append({"image": image_path, "label": label_path})
         
         return data
