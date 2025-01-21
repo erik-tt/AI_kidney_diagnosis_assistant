@@ -30,7 +30,6 @@ POST_TRANSFORMS = [
 
 def transforms_selector(transforms_name :str):
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     transforms = []
     if transforms_name == "config_1":
         transforms = [
