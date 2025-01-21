@@ -3,6 +3,7 @@ from typing import List
 from sklearn.model_selection import train_test_split
 from monai.data import CacheDataset
 from config.transforms_selector import transforms_selector
+from torch.utils.tensorboard import SummaryWriter
 
 def create_dataset(paths: List[str],
                    transforms_name: str,   
@@ -24,7 +25,7 @@ def create_dataset(paths: List[str],
     )
     
     train_transforms, val_transforms = transforms_selector(transforms_name)
-
+    
     # Check if cache fails
     train_dataset = CacheDataset(train_data, train_transforms)
     test_dataset = CacheDataset(test_data, val_transforms)
