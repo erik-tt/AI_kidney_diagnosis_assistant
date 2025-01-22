@@ -5,8 +5,8 @@ __pycache__/
 
 #data files
 data
-ML/runs
-ML/segmentation_models
+ML/segmentation/runs
+ML/segmentation/segmentation_models
 
 # C extensions
 *.so
