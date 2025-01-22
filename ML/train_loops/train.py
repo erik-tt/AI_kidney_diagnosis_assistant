@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 import os 
 from datetime import datetime
 
-def plot_val_image(model_output, image, label):
+def plot_output(model_output, image, label):
 
     model_output = model_output.unsqueeze(0)
 
@@ -20,7 +20,7 @@ def plot_val_image(model_output, image, label):
     label_cpu = label.cpu().numpy()
     image_cpu = image.cpu().numpy()
 
-    plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(10, 10))
 
     plt.subplot(1, 2, 1)
     plt.title("Ground Truth")
@@ -33,7 +33,8 @@ def plot_val_image(model_output, image, label):
     plt.axis('off')
 
     plt.tight_layout()
-    plt.show()
+    
+    return fig
 
 
 def train_loop(model, 
@@ -77,8 +78,10 @@ def train_loop(model,
                         validation_losses.append(loss.item())
 
                         if (epoch + 1) % 10 == 0:
-                             #writer.add_figure("ground truth vs")
-                            plot_val_image(outputs[0], images[0], labels[0])
+                            writer.add_figure("ground truth vs output",
+                                plot_output(outputs[0], images[0], labels[0]),
+                                global_step = epoch)
+
                             
     
                         
