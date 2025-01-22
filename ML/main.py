@@ -13,6 +13,7 @@ def main(params):
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs("./runs", exist_ok=True)
+    os.makedirs("./segmentation_models", exist_ok=True)
     log_dir = os.path.join("./runs", f"experiment_{timestamp}")
     writer = SummaryWriter(log_dir=log_dir)
 
@@ -35,7 +36,9 @@ def main(params):
         train_dataloader=train_dataloader,
         val_dataloader=val_dataloader,
         device=device,
-        writer=writer
+        writer=writer,
+        epochs_to_save=params.save,
+        model_name=params.model
     )
 
     writer.close()
@@ -49,6 +52,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--num_epochs", type=int, default=10)
     parser.add_argument("--lr", type=int, default=0.001)
+    parser.add_argument("--save",type=int, default=10)
 
     args = parser.parse_args()
 

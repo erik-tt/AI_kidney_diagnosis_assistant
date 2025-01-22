@@ -42,7 +42,9 @@ def train_loop(model,
                train_dataloader: DataLoader, 
                val_dataloader: DataLoader, 
                device: torch.device,
-               writer: SummaryWriter):
+               writer: SummaryWriter,
+               epochs_to_save: int,
+               model_name: str):
 
     loss_function = DiceCELoss(to_onehot_y=True, softmax=True)
     optimizer = torch.optim.Adam(model.parameters())
@@ -77,13 +79,23 @@ def train_loop(model,
                         loss = loss_function(outputs, labels)
                         validation_losses.append(loss.item())
 
-                        if (epoch + 1) % 10 == 0:
+                        if (epoch + 1) % epochs_to_save == 0:
+                            #Log the histograms of model weights
+                            for name, param in model.named_parameters():
+                                 writer.add_histogram(name, param, epoch)
+
                             writer.add_figure("ground truth vs output",
                                 plot_output(outputs[0], images[0], labels[0]),
                                 global_step = epoch)
 
-                            
-    
-                        
+                            #Save checkpoint
+                            torch.save({
+                                'epoch': epoch,
+                                'model_state_dict': model.state_dict(),
+                                'optimizer_state_dict': optimizer.state_dict(),
+                                'loss': loss
+                                },"segmentation_models/checkpoint_{model_name}.pth")
+
             writer.add_scalar("Training loss", np.mean(training_losses), epoch)
             writer.add_scalar("Validation loss", np.mean(validation_losses), epoch)
+    writer.flush()
