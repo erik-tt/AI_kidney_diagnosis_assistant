@@ -1,2 +1,5 @@
 # AI kidney diagnosis assistant
-Master thesis project at the department of computer science at NTNU. 
+Master thesis project at the department of computer science at NTNU.
+
+## Run the ML code using conda
+The machine learning directory contains an environment.yml file. This file can be used to build a conda virtual environment to obtain the dependencies needed to run the project. By using the command `conda env create -f environment.yml` a first time user can obtain all of the dependencies in the AI-diagnostic virtual environment. Activate the environment using `conda activate AI-diagnostic`. Use `which python` to ensure that the correct python is in use. Python code can now be run from the terminal. To deactivate the environment, use `conda deactivate`. The environment can be deleted by using `conda remove -n AI-diagnostic --all` which will remove all of the dependencies and delete the environment. After the environment is created, packages will not be updated by running the create command again. Use conda to install the needed ones, or delete and rerun the create command using the environment.yml file.
