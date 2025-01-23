@@ -11,7 +11,7 @@ def create_dataset(paths: List[str],
                    random_state: int = 42, 
                    shuffle: bool = True):
     
-    file_reader = FileReader("../data")
+    file_reader = FileReader("../../data")
     dataset = []
     for path in paths:
         segmentation_data = file_reader.get_segmentation_file_paths(path)
