@@ -4,7 +4,7 @@ channels:
   - conda-forge
   - anaconda
 dependencies:
-  - python=3.12
+  - python=3.9
   - scikit-learn
   - monai
   - numpy
@@ -26,4 +26,5 @@ dependencies:
   - tensorboard
   - pip:
     - labelme
-  
+    - SimpleITK
+    - pyradiomics
