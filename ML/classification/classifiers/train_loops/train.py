@@ -7,15 +7,16 @@ from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 
-def plot_confusion_matrix(true_labels, predicted_labels):
+def plot_confusion_matrix(true_labels, predicted_labels, epoch):
     CKD_stages = np.arange(1,6)
     conf_matrix = confusion_matrix(true_labels, predicted_labels)
-    plt.figure(figsize=(10, 7))
+    fig = plt.figure(figsize=(10, 7))
     sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", cbar=False, xticklabels=CKD_stages, yticklabels=CKD_stages)
     plt.xlabel("Predicted")
     plt.ylabel("True")
-    plt.title(f"Confusion Matrix for validation set, last Epoch")
-    plt.show()
+    plt.title(f"Confusion Matrix for validation set epoch {epoch}")
+    
+    return fig
         
 
 
@@ -83,11 +84,12 @@ def train_loop(model,
                         validation_predictions.extend(predicted.cpu().numpy())
                 
                 if (epoch + 1) % epochs_to_save == 0:
-                    
-                    plot_confusion_matrix(
-                         true_labels = np.array(validation_labels) + 1,
-                         predicted_labels = np.array(validation_predictions) + 1
-                    )
+                    writer.add_figure("validation confusion matrix",
+                        plot_confusion_matrix(
+                            true_labels = np.array(validation_labels) + 1,
+                            predicted_labels = np.array(validation_predictions) + 1,
+                            epoch = epoch)
+                        ,global_step = epoch)
 
                     #Save checkpoint
                     torch.save({
