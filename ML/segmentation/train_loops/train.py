@@ -82,7 +82,7 @@ def train_loop(model,
                         if (epoch + 1) % epochs_to_save == 0:
                             #Log the histograms of model weights
                             for name, param in model.named_parameters():
-                                 writer.add_histogram(name, param, epoch)
+                                    writer.add_histogram(name, param, epoch)
 
                             writer.add_figure("ground truth vs output",
                                 plot_output(outputs[0], images[0], labels[0]),
@@ -94,7 +94,7 @@ def train_loop(model,
                                 'model_state_dict': model.state_dict(),
                                 'optimizer_state_dict': optimizer.state_dict(),
                                 'loss': loss
-                                },"segmentation_models/checkpoint_{model_name}.pth")
+                                },f"segmentation_models/checkpoint_{model_name}.pth")
 
             writer.add_scalar("Training loss", np.mean(training_losses), epoch)
             writer.add_scalar("Validation loss", np.mean(validation_losses), epoch)

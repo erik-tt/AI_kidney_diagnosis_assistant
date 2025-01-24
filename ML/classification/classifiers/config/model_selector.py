@@ -14,7 +14,6 @@ def model_selector(model_name :str, device: torch.device):
             block_inplanes=[64, 128, 256, 512],
             spatial_dims=2
         )
-        print(model)
         return model
     
     else:

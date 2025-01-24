@@ -1,8 +1,22 @@
+from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from tqdm import tqdm
 from monai.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+
+def plot_confusion_matrix(true_labels, predicted_labels):
+    CKD_stages = np.arange(1,6)
+    conf_matrix = confusion_matrix(true_labels, predicted_labels)
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", cbar=False, xticklabels=CKD_stages, yticklabels=CKD_stages)
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title(f"Confusion Matrix for validation set, last Epoch")
+    plt.show()
+        
 
 
 def train_loop(model, 
@@ -10,6 +24,7 @@ def train_loop(model,
                train_dataloader: DataLoader, 
                val_dataloader: DataLoader, 
                device: torch.device,
+               writer: SummaryWriter,
                epochs_to_save: int,
                model_name: str):
 
@@ -28,7 +43,7 @@ def train_loop(model,
             print(f"epoch {epoch + 1}/{epochs}")
             model.train()
 
-            training_losses_epoch = []
+            training_losses = []
     
             for batch_data in tqdm(train_dataloader):
                 images, labels = batch_data["image"].to(device), batch_data["label"].to(device, dtype=torch.long) 
@@ -39,9 +54,7 @@ def train_loop(model,
                 loss = loss_function(outputs, labels)
                 loss.backward()
                 optimizer.step()
-                training_losses_epoch.append(loss.item())
-
-            training_losses.append(np.mean(training_losses_epoch))
+                training_losses.append(loss.item())
 
             
             
@@ -49,7 +62,7 @@ def train_loop(model,
             total = 0
             validation_labels = []
             validation_predictions = []
-            validation_losses_epoch = []
+            validation_losses = []
 
             model.eval()
             with torch.no_grad():
@@ -59,7 +72,8 @@ def train_loop(model,
                         outputs = model(images)
 
                         loss = loss_function(outputs, labels)
-                        validation_losses_epoch.append(loss.item())
+                        validation_losses.append(loss.item())
+
                         _, predicted = torch.max(outputs.data, 1)
 
                         total += labels.size(0)
@@ -67,10 +81,30 @@ def train_loop(model,
 
                         validation_labels.extend(labels.cpu().numpy())
                         validation_predictions.extend(predicted.cpu().numpy())
+                
+                if (epoch + 1) % epochs_to_save == 0:
+                    
+                    plot_confusion_matrix(
+                         true_labels = np.array(validation_labels) + 1,
+                         predicted_labels = np.array(validation_predictions) + 1
+                    )
 
-            validation_losses.append(np.mean(validation_losses_epoch))
-            validation_accuracy.append(100 * correct / total)
+                    #Save checkpoint
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        'loss': loss
+                        },f"classification_models/checkpoint_{model_name}.pth")
+
+            validation_accuracy.append(correct / total)
 
             print(f"""Epoch {epoch+1}, Training Loss: {training_losses[-1]},
                    Validation Loss: {validation_losses[-1]}
                    Accuracy: {validation_accuracy[-1]}%""")
+            
+            writer.add_scalar("Average training loss", np.mean(training_losses), epoch)
+            writer.add_scalar("Average validation loss", np.mean(validation_losses), epoch)
+            writer.add_scalar("Average accuracy", np.mean(validation_accuracy), epoch)
+
+    writer.flush()
