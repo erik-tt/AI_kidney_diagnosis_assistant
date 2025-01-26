@@ -7,6 +7,8 @@ __pycache__/
 data
 ML/segmentation/runs
 ML/segmentation/segmentation_models
+ML/classification/classifiers/classification_models
+ML/classification/classifiers/runs
 
 # C extensions
 *.so
