@@ -20,7 +20,7 @@ class FileReader:
     
     def get_segmentation_file_paths(self, folder_name):
         data = []
-        path = os.path.join(self.base_dir, "segmentation_dataset", folder_name)
+        path = os.path.join(self.base_dir, "dataset", folder_name)
 
         walk_iter = os.walk(path)
         next(walk_iter)
@@ -36,6 +36,8 @@ class FileReader:
                     image_path = os.path.join(absolute_path, file)
                 elif "label" in file:
                     label_path = os.path.join(absolute_path, file)
+                elif "dcm" in file:
+                    continue
                 else:
                     raise ValueError("data does not contain label or image")
                 
