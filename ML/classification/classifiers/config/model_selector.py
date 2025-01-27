@@ -1,5 +1,5 @@
 import torch
-from monai.networks.nets import ResNet
+from monai.networks.nets import ResNet, EfficientNetBN
 
 
 
@@ -14,6 +14,14 @@ def model_selector(model_name :str, device: torch.device):
             block_inplanes=[64, 128, 256, 512],
             spatial_dims=2
         )
+        return model
+    elif model_name.lower() == "efficientnet":
+        model = EfficientNetBN(
+            model_name="efficientnet-b1",
+            in_channels=1,
+            pretrained=False
+        )
+
         return model
     
     else:

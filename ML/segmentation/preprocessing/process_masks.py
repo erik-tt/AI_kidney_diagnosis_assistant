@@ -5,8 +5,8 @@ import nibabel as nib
 import numpy as np
 import shutil
 
-input_dir = "../data/segmentation_masks"
-output_dir = "../data/segmentation_dataset"
+input_dir = "../../../data/segmentation_masks"
+output_dir = "../../../data/segmentation_dataset"
 
 os.makedirs(output_dir, exist_ok=True)
 
