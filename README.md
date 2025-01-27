@@ -9,6 +9,7 @@ The repository does not contain the data. Download the data from the [Database o
 
 The data directory should now include this:
 
+```
 AI_kidney_diagnosis_assistant/
                             data/
                                 BAZA dynamicrenal/
@@ -20,6 +21,6 @@ AI_kidney_diagnosis_assistant/
                                 segmentation_masks/
                                             drsbru/
                                             drsprg/
-
+```
 
 Run the construct_data.py script in the ML directory to create the dataset from these files. You only need to do this once.
