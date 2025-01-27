@@ -8,12 +8,14 @@ def get_mobilenetv3():
     mobilenet_v3 = models.mobilenet_v3_small()
 
     #Grayscale config (prompted chatgpt)
+    original_first_layer = mobilenet_v3.features[0][0]
+    
     mobilenet_v3.features[0][0] = nn.Conv2d(
         in_channels=1,
-        out_channels=32,
-        kernel_size=3,
-        stride=2,
-        padding=1,
+        out_channels=original_first_layer.out_channels,
+        kernel_size=original_first_layer.kernel_size,
+        stride=original_first_layer.stride,
+        padding=original_first_layer.padding,
         bias=False
     )
     return mobilenet_v3
