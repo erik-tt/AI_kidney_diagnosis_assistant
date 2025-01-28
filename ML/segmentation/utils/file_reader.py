@@ -65,6 +65,8 @@ class FileReader:
                     image_path = os.path.join(absolute_path, file)
                 elif "label" in file:
                     label_path = os.path.join(absolute_path, file)
+                elif "dcm" in file:
+                    continue
                 else:
                     continue
                 
