@@ -14,8 +14,8 @@ class FileReader:
     
     def get_pd_labels(self):
         #get csv data
-        df_drsbru = pd.read_csv(os.path.join(self.base_dir, "classification_labels/drsbru.csv"), delimiter=",")[['STUDY NAME', 'GENDER', 'CKD']]
-        df_drsbrg = pd.read_csv(os.path.join(self.base_dir, "classification_labels/drsprg.csv"), delimiter=",")[['STUDY NAME', 'GENDER', 'CKD']]
+        df_drsbru = pd.read_csv(os.path.join(self.base_dir, "labels/drsbru.csv"), delimiter=",")[['STUDY NAME', 'GENDER', 'CKD']]
+        df_drsbrg = pd.read_csv(os.path.join(self.base_dir, "labels/drsprg.csv"), delimiter=",")[['STUDY NAME', 'GENDER', 'CKD']]
         df = pd.concat([df_drsbrg, df_drsbru])
         df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
         df.dropna(inplace=True)
@@ -27,7 +27,7 @@ class FileReader:
 
         data = []
         #Change this when we have a good data structure
-        path = os.path.join(self.base_dir, "segmentation_dataset/", folder_name)
+        path = os.path.join(self.base_dir, "dataset/", folder_name)
 
         df = self.get_pd_labels()
 
