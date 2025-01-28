@@ -34,6 +34,11 @@ def transforms_selector(transforms_name :str):
             RepeatChanneld(keys=["image"], repeats=3),
             Resized(keys=["image"], spatial_size=(224, 224))
         ]
+
+    if transforms_name == "config_3":
+        transforms = [ 
+            Resized(keys=["image"], spatial_size=(128, 128, 128))
+        ]
     train_transforms = PRE_TRANSFORMS + transforms + POST_TRANSFORMS
     val_transforms = []
 

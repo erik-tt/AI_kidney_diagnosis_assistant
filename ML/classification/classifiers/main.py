@@ -46,8 +46,9 @@ if __name__ == "__main__":
 
    # parser.add_argument("--data", nargs='+', default="", help="List of data directories") #Update this when we know dir structure for this data
     parser.add_argument("--model", default="resnet18")
+    #image or time_series
     parser.add_argument("--data_type", default="image")
-    #Set to config_2 if models have 3 input channels, for example for pretrained resnet models
+    #Set to config_2 if models have 3 input channels and image is the data-type, for example for pretrained resnet models
     parser.add_argument("--transforms", default="config_2")
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=0)
