@@ -4,12 +4,13 @@ from config.transforms_selector import transforms_selector
 from utils.file_reader import FileReader
 from monai.data import CacheDataset
 
-def create_dataset(transforms_name: str,   
+def create_dataset(transforms_name: str,
+                   data_type: str,   
                    test_size: int = 0.2, 
                    random_state: int = 42, 
                    shuffle: bool = True):
     
-    file_reader = FileReader("../../../data")
+    file_reader = FileReader("../../../data", data_type=data_type)
     dataset = file_reader.get_classification_data()
 
     train_data, test_data = train_test_split(

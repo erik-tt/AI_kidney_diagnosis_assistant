@@ -23,7 +23,7 @@ def main(params):
     writer.add_text("Learning rate", f"Learning rate: {params.lr}", global_step=0)
     # writer.add_text("Datadir", f"Data directories: {params.data}", global_step=0)
 
-    train_dataset, test_dataset = create_dataset(params.transforms)
+    train_dataset, test_dataset = create_dataset(params.transforms, params.data_type)
 
     train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers)
     val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers) 
@@ -45,13 +45,15 @@ if __name__ == "__main__":
     parser = ArgumentParser()
 
    # parser.add_argument("--data", nargs='+', default="", help="List of data directories") #Update this when we know dir structure for this data
-    parser.add_argument("--transforms", default="default")
     parser.add_argument("--model", default="resnet18")
+    parser.add_argument("--data_type", default="image")
+    #Set to config_2 if models have 3 input channels, for example for pretrained resnet models
+    parser.add_argument("--transforms", default="config_2")
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--num_epochs", type=int, default=10)
     parser.add_argument("--lr", type=int, default=0.001)
-    parser.add_argument("--save",type=int, default=5) #TODO:implement save
+    parser.add_argument("--save",type=int, default=2) #TODO:implement save
 
     args = parser.parse_args()
 

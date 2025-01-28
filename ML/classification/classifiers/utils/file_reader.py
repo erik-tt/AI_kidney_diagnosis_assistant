@@ -8,8 +8,9 @@ import pandas as pd
 # labels from the csv files containing 
 
 class FileReader:
-    def __init__(self, base_dir:str):
+    def __init__(self, base_dir:str, data_type:str):
         self.base_dir = base_dir
+        self.data_type = data_type
 
     
     def get_pd_labels(self):
@@ -39,7 +40,9 @@ class FileReader:
             absolute_path = os.path.abspath(root)
 
             for file in files:
-                if "image" in file:
+                if ("image" in file) and (self.data_type == "image"):
+                    image_paths.append(os.path.join(absolute_path, file))
+                if (file.endswith(".dcm")) and (self.data_type == "time_series"):
                     image_paths.append(os.path.join(absolute_path, file))
             
         

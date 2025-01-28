@@ -6,7 +6,9 @@ from monai.transforms import (
     RandFlipd,
     NormalizeIntensityd,
     ToTensord,
-    Randomizable
+    Randomizable,
+    RepeatChanneld,
+    Resized
 )
 
 PRE_TRANSFORMS = [
@@ -25,6 +27,12 @@ def transforms_selector(transforms_name :str):
     if transforms_name == "config_1":
         transforms = [
             RandFlipd(keys=["image"], spatial_axis=0, prob=0.5),
+        ]
+
+    if transforms_name == "config_2":
+        transforms = [ 
+            RepeatChanneld(keys=["image"], repeats=3),
+            Resized(keys=["image"], spatial_size=(224, 224))
         ]
     train_transforms = PRE_TRANSFORMS + transforms + POST_TRANSFORMS
     val_transforms = []
