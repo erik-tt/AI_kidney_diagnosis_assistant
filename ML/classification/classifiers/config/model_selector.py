@@ -1,5 +1,5 @@
 import torch
-from monai.networks.nets import ResNet, EfficientNetBN, ViT
+from monai.networks.nets import ResNet, EfficientNetBN, ViT, TorchVisionFCModel
 import torchvision.models as models
 import torch.nn as nn
 
@@ -24,7 +24,9 @@ def get_mobilenetv3():
 
 def model_selector(model_name :str, device: torch.device):
 
-    if model_name.lower() == "resnet18":
+
+    #TODO: make this 3D with dicom
+    if model_name.lower() == "3dresnet":
         model = ResNet(
             block="basic",
             num_classes = 5,
@@ -32,6 +34,22 @@ def model_selector(model_name :str, device: torch.device):
             layers = [2, 2, 2, 2],
             block_inplanes=[64, 128, 256, 512],
             spatial_dims=2
+        )
+        return model
+    
+    elif model_name.lower() == "resnet18":
+        model = TorchVisionFCModel(
+            model_name='resnet18',
+            num_classes=5,
+            pretrained=True
+        )
+        return model
+    
+    elif model_name.lower() == "resnet50":
+        model = TorchVisionFCModel(
+            model_name='resnet50',
+            num_classes=5,
+            pretrained=True
         )
         return model
     
@@ -46,8 +64,8 @@ def model_selector(model_name :str, device: torch.device):
     elif model_name.lower() == "mobilenetv3":
         return get_mobilenetv3()
     
+    #Improve the ViT before further use to make sure it is configured properly
     elif (model_name.lower()) == "vit" or (model_name.lower() == "vision_transformer"):
-
         model = ViT(
             in_channels=1,
             img_size= (128, 128),
