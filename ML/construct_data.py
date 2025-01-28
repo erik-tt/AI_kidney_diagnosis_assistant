@@ -5,10 +5,19 @@ import nibabel as nib
 import numpy as np
 import shutil
 
-input_dir = "../../../data/segmentation_masks"
-output_dir = "../../../data/segmentation_dataset"
+input_dir = "../data/segmentation_masks"
+output_dir = "../data/dataset"
+dynamicrenal = "../data/BAZA dynamicrenal"
 
 os.makedirs(output_dir, exist_ok=True)
+
+def add_dicom_files(base_name, output_path):
+    for root, dirs, files in os.walk(dynamicrenal):
+                for filename in files:
+                    if (base_name in filename) and filename.endswith(".dcm"):
+                        file_path = os.path.join(os.path.join(dynamicrenal, os.path.relpath(root, dynamicrenal)), filename)
+                        shutil.copy2(file_path, output_path)
+
 
 for root, dirs, files in os.walk(input_dir):
     for filename in files:
@@ -50,3 +59,6 @@ for root, dirs, files in os.walk(input_dir):
 
             nib.save(image_nii, image_output_path)
             nib.save(mask_nii, mask_output_path)
+
+            #Get dicom files. Long runtime, but this is only to be done once for setup.
+            add_dicom_files(base_name, output_path)
