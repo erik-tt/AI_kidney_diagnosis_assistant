@@ -1,10 +1,37 @@
 import os
+import glob
 import re
 
 class FileReader:
     def __init__(self, base_dir):
         self.base_dir = base_dir
 
+    # Input: relative_path, files from relative path, return dictionary
+
+    def get_image_data(self, folder_name, file_suffixes):
+        path = os.path.join(self.base_dir, "dataset", folder_name)
+
+        
+        patterns = [
+            re.compile(rf"^[a-zA-Z]+_\d+_{re.escape(s)}(?:_[a-zA-Z]+)?\.(dcm|nii\.gz)$", re.IGNORECASE)
+            for s in file_suffixes
+        ]
+
+        print(patterns)
+                                       
+        for root, _, files in os.walk(path):
+            #s = ' '.join(files) #mulig raskere?
+            for file in files:
+                for pattern in patterns:
+                    #print(file)
+                    if pattern.match(file):  # Use `match` for filename-level patterns
+                        print(f"Matched: {file}")
+            
+            #re.findall(s, patterns)
+
+                #print(file)
+        #pattern = re.compile(r"^[a-zA-Z]+_\d+_" + re.escape(file_suffix) + r"\.dcm|nii\.gz$", re.IGNORECASE)
+        
     def get_data_file_paths(self, folder_name, suffix):
         file_paths = []
         pattern = re.compile(r"^[a-zA-Z]+_\d+_" + re.escape(suffix) + r"\.dcm$", re.IGNORECASE)
@@ -20,7 +47,7 @@ class FileReader:
     
     def get_segmentation_file_paths(self, folder_name):
         data = []
-        path = os.path.join(self.base_dir, "segmentation_dataset", folder_name)
+        path = os.path.join(self.base_dir, "dataset", folder_name)
 
         walk_iter = os.walk(path)
         next(walk_iter)
@@ -32,12 +59,14 @@ class FileReader:
             label_path = None
 
             for file in files:
+                print(absolute_path)
+                print(file)
                 if "image" in file:
                     image_path = os.path.join(absolute_path, file)
                 elif "label" in file:
                     label_path = os.path.join(absolute_path, file)
                 else:
-                    raise ValueError("data does not contain label or image")
+                    continue
                 
         
             data.append({"image": image_path, "label": label_path})
