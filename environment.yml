@@ -24,6 +24,7 @@ dependencies:
   - ipython
   - pip
   - tensorboard
+  - einops
   - pip:
     - labelme
     - SimpleITK

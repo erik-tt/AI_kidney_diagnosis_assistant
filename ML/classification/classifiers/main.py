@@ -51,7 +51,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--num_epochs", type=int, default=10)
     parser.add_argument("--lr", type=int, default=0.001)
-    parser.add_argument("--save",type=int, default=5) #TODO:implement save
+    parser.add_argument("--save",type=int, default=2) #TODO:implement save
 
     args = parser.parse_args()
 

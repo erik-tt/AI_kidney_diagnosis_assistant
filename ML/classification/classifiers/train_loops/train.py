@@ -52,6 +52,12 @@ def train_loop(model,
                 labels = labels - 1
                 optimizer.zero_grad()
                 outputs = model(images)
+                
+                if isinstance(outputs, tuple):
+                     #ViT fix
+                     outputs = outputs[0]
+                     outputs = outputs[:, 0, :]
+                
                 loss = loss_function(outputs, labels)
                 loss.backward()
                 optimizer.step()
@@ -71,6 +77,11 @@ def train_loop(model,
                         images, labels = batch["image"].to(device), batch["label"].to(device, dtype=torch.long) 
                         labels = labels - 1
                         outputs = model(images)
+
+                        if isinstance(outputs, tuple):
+                            #ViT fix
+                            outputs = outputs[0]
+                            outputs = outputs[:, 0, :]
 
                         loss = loss_function(outputs, labels)
                         validation_losses.append(loss.item())
@@ -101,9 +112,9 @@ def train_loop(model,
 
             validation_accuracy.append(correct / total)
 
-            print(f"""Epoch {epoch+1}, Training Loss: {training_losses[-1]},
-                   Validation Loss: {validation_losses[-1]}
-                   Accuracy: {validation_accuracy[-1]}%""")
+            print(f"""Epoch {epoch+1}, Average Training Loss: {np.mean(training_losses)},
+                   Average Validation Loss: {np.mean(validation_losses)}
+                   Average Accuracy: {np.mean(validation_accuracy)}%""")
             
             writer.add_scalar("Average training loss", np.mean(training_losses), epoch)
             writer.add_scalar("Average validation loss", np.mean(validation_losses), epoch)

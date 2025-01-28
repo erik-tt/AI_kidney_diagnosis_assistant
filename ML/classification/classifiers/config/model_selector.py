@@ -1,5 +1,5 @@
 import torch
-from monai.networks.nets import ResNet, EfficientNetBN
+from monai.networks.nets import ResNet, EfficientNetBN, ViT
 import torchvision.models as models
 import torch.nn as nn
 
@@ -19,6 +19,8 @@ def get_mobilenetv3():
         bias=False
     )
     return mobilenet_v3
+
+
 
 def model_selector(model_name :str, device: torch.device):
 
@@ -43,6 +45,18 @@ def model_selector(model_name :str, device: torch.device):
     
     elif model_name.lower() == "mobilenetv3":
         return get_mobilenetv3()
+    
+    elif (model_name.lower()) == "vit" or (model_name.lower() == "vision_transformer"):
+
+        model = ViT(
+            in_channels=1,
+            img_size= (128, 128),
+            patch_size= (16,16),
+            spatial_dims=2,
+            hidden_size=768,
+            num_classes=5
+        )
+        return model
     
     else:
         raise ValueError(f"Unkown classifier, check spelling of model in model_selector.py")
