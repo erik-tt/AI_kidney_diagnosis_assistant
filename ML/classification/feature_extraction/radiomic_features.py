@@ -1,6 +1,11 @@
 from radiomics.featureextractor import RadiomicsFeatureExtractor
 import numpy as np
 import SimpleITK as sitk
+from ML.segmentation.utils.file_reader import FileReader
+
+img = "../../../data/dataset/drsprg/post/drsprg_001_POST/drsprg_001_POST.dcm"
+label = "../../../data/dataset/drsprg/post/drsprg_001_POST/drsprg_001_POST_label.nii.gz"
+
 
 def extract_radiomic_features(image_series, mask):
     image = sitk.ReadImage(image_series)  
@@ -15,7 +20,7 @@ def extract_radiomic_features(image_series, mask):
     extractor.enableFeatureClassByName('shape2D')
     
     radiomic_features = {}
-    for region in np.unique(mask_array):
+    for region in np.unique(sitk.GetArrayFromImage(mask)):
         if region == 0:
             continue
         
@@ -31,3 +36,5 @@ def extract_radiomic_features(image_series, mask):
             radiomic_features[region][t] = results
 
     return radiomic_features
+
+print(extract_radiomic_features(img, label))
