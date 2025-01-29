@@ -27,6 +27,7 @@ def model_selector(model_name :str, device: torch.device):
 
     #TODO: make this 3D with dicom
     if model_name.lower() == "3dresnet":
+        #Resnet18 config
         model = ResNet(
             block="basic",
             num_classes = 5,

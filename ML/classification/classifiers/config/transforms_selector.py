@@ -40,7 +40,12 @@ def transforms_selector(transforms_name :str):
 
     if transforms_name == "config_3":
         transforms = [
-             Resized(keys=["image"], spatial_size=(32, 10, 32))
+            #Lambdad function needed to switch dimensions, suggested by chat GPT
+            Lambdad(keys=["image"], func=lambda x: x.permute(0, 2, 1, 3)),
+
+            #Resize the image to be uniform
+            # 12 images with 48x48 resolution
+            Resized(keys=["image"], spatial_size=(12, 48, 48))
         ]
 
     train_transforms = PRE_TRANSFORMS + transforms + POST_TRANSFORMS
