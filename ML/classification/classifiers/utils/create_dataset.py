@@ -26,6 +26,9 @@ def create_dataset(transforms_name: str,
     train_dataset = CacheDataset(train_data, train_transforms)
     test_dataset = CacheDataset(test_data, val_transforms)
 
+    sample = train_dataset[0]["image"]
+    print(f"Loaded image shape: {sample.shape}")
+
     return train_dataset, test_dataset
 
 

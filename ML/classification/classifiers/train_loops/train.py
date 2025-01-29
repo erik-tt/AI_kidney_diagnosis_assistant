@@ -51,6 +51,9 @@ def train_loop(model,
                 #Labels should be 1 index
                 labels = labels - 1
                 optimizer.zero_grad()
+
+                print(images[0].shape)
+
                 outputs = model(images)
                 
                 if isinstance(outputs, tuple):

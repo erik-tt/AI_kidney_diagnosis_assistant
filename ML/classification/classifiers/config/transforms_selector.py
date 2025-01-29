@@ -8,11 +8,14 @@ from monai.transforms import (
     ToTensord,
     Randomizable,
     RepeatChanneld,
-    Resized
+    Resized,
+    Pad,
+    Transposed,
+    Lambdad
 )
 
 PRE_TRANSFORMS = [
-    LoadImaged(keys=["image"]),
+    LoadImaged(keys=["image"], ensure_channel_first=True),
     EnsureTyped(keys=["image", "label"]),
 ] 
 
@@ -36,9 +39,10 @@ def transforms_selector(transforms_name :str):
         ]
 
     if transforms_name == "config_3":
-        transforms = [ 
-            Resized(keys=["image"], spatial_size=(128, 128, 128))
+        transforms = [
+             Resized(keys=["image"], spatial_size=(32, 10, 32))
         ]
+
     train_transforms = PRE_TRANSFORMS + transforms + POST_TRANSFORMS
     val_transforms = []
 
