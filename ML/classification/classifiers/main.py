@@ -49,7 +49,7 @@ if __name__ == "__main__":
     #image or time_series
     parser.add_argument("--data_type", default="image")
     #Set to config_2 if models have 3 input channels and image is the data-type, for example for pretrained resnet models
-    parser.add_argument("--transforms", default="config_3")
+    parser.add_argument("--transforms", default="pretrained")
     parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--num_epochs", type=int, default=10)
