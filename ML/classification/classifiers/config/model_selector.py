@@ -66,12 +66,13 @@ def model_selector(model_name :str, device: torch.device):
         return get_mobilenetv3()
     
     #Improve the ViT before further use to make sure it is configured properly
+    #Can be configured to 3D for temporal dimension (but should look into ViViT)
     elif (model_name.lower()) == "vit" or (model_name.lower() == "vision_transformer"):
         model = ViT(
             in_channels=1,
-            img_size= (128, 128),
-            patch_size= (16,16),
-            spatial_dims=2,
+            img_size= (10, 84, 84),
+            patch_size= (2,16,16),
+            spatial_dims=3,
             hidden_size=768,
             num_classes=5
         )
