@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from monai.data import DataLoader
+from monai.data import DataLoader, pad_list_data_collate
 from train_loops.train import train_loop
 from config.model_selector import model_selector
 from utils.create_dataset import create_dataset
@@ -25,8 +25,8 @@ def main(params):
 
     train_dataset, test_dataset = create_dataset(params.transforms, params.data_type)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers)
-    val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers) 
+    train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers, collate_fn=pad_list_data_collate)
+    val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers, collate_fn=pad_list_data_collate) 
 
     model = model_selector(params.model, device)
 
@@ -46,10 +46,11 @@ if __name__ == "__main__":
 
    # parser.add_argument("--data", nargs='+', default="", help="List of data directories") #Update this when we know dir structure for this data
     parser.add_argument("--model", default="resnet18")
+    #image or time_series
     parser.add_argument("--data_type", default="image")
-    #Set to config_2 if models have 3 input channels, for example for pretrained resnet models
-    parser.add_argument("--transforms", default="config_2")
-    parser.add_argument("--batch_size", type=int, default=4)
+    #Set to config_2 if models have 3 input channels and image is the data-type, for example for pretrained resnet models
+    parser.add_argument("--transforms", default="pretrained")
+    parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--num_epochs", type=int, default=10)
     parser.add_argument("--lr", type=int, default=0.001)

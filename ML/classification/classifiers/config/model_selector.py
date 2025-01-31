@@ -27,13 +27,14 @@ def model_selector(model_name :str, device: torch.device):
 
     #TODO: make this 3D with dicom
     if model_name.lower() == "3dresnet":
+        #Resnet18 config
         model = ResNet(
             block="basic",
             num_classes = 5,
             n_input_channels = 1,
             layers = [2, 2, 2, 2],
             block_inplanes=[64, 128, 256, 512],
-            spatial_dims=2
+            spatial_dims=3
         )
         return model
     
