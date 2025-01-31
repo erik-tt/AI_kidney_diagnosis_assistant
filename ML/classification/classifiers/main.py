@@ -10,6 +10,8 @@ import os
 
 def main(params):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #For reproducability (The answer is 42)
+    torch.manual_seed(42)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs("./runs", exist_ok=True)
