@@ -6,32 +6,28 @@ class FileReader:
     def __init__(self, base_dir):
         self.base_dir = base_dir
 
-    # Input: relative_path, files from relative path, return dictionary
-
     def get_image_data(self, folder_name, file_suffixes):
+        data = []
         path = os.path.join(self.base_dir, "dataset", folder_name)
 
         
         patterns = [
-            re.compile(rf"^[a-zA-Z]+_\d+_{re.escape(s)}(?:_[a-zA-Z]+)?\.(dcm|nii\.gz)$", re.IGNORECASE)
-            for s in file_suffixes
+            (suffix, re.compile(rf"_{re.escape(suffix)}\.(dcm|nii\.gz)$", re.IGNORECASE))
+            for suffix in file_suffixes
         ]
-
-        print(patterns)
                                        
         for root, _, files in os.walk(path):
-            #s = ' '.join(files) #mulig raskere?
+            entry = {}
             for file in files:
-                for pattern in patterns:
-                    #print(file)
-                    if pattern.match(file):  # Use `match` for filename-level patterns
-                        print(f"Matched: {file}")
-            
-            #re.findall(s, patterns)
+                for suffix, pattern in patterns:
+                    if pattern.search(file):
+                        file_path = os.path.join(root, file)
+                        entry[suffix] = file_path
+            if entry:  
+                data.append(entry)
 
-                #print(file)
-        #pattern = re.compile(r"^[a-zA-Z]+_\d+_" + re.escape(file_suffix) + r"\.dcm|nii\.gz$", re.IGNORECASE)
-        
+        return data
+            
     def get_data_file_paths(self, folder_name, suffix):
         file_paths = []
         pattern = re.compile(r"^[a-zA-Z]+_\d+_" + re.escape(suffix) + r"\.dcm$", re.IGNORECASE)
