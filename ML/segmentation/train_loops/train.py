@@ -5,7 +5,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 from monai.transforms import AsDiscrete
-from monai.data import DataLoader
+from monai.data import DataLoader, decollate_batch
 from torch.utils.tensorboard import SummaryWriter
 import os 
 from datetime import datetime
@@ -63,10 +63,22 @@ def train_loop(model,
                 images, labels = batch_data["image"].to(device), batch_data["label"].to(device) 
                 optimizer.zero_grad()
                 outputs = model(images)
+
+                # Fra tdt17 min project
+                val_labels_list = decollate_batch(labels)
+                val_labels_convert = [post_label(val_label_tensor) for val_label_tensor in val_labels_list]
+                val_outputs_list = decollate_batch(outputs)
+                val_output_convert = [post_pred(val_pred_tensor) for val_pred_tensor in val_outputs_list]
+
                 loss = loss_function(outputs, labels)
                 loss.backward()
                 optimizer.step()
                 training_losses.append(loss.item())
+                
+                # Fra tdt17 mini project
+                dice_metric(y_pred=val_output_convert, y=val_labels_convert)
+            training_dice = dice_metric.aggregate().item()
+            dice_metric.reset()
 
             validation_losses = []
             model.eval()
@@ -75,6 +87,12 @@ def train_loop(model,
                         images, labels = batch["image"].to(device), batch["label"].to(device)
 
                         outputs = model(images)
+
+                        # Fra tdt17 mini project
+                        val_labels_list = decollate_batch(labels)
+                        val_labels_convert = [post_label(val_label_tensor) for val_label_tensor in val_labels_list]
+                        val_outputs_list = decollate_batch(outputs)
+                        val_output_convert = [post_pred(val_pred_tensor) for val_pred_tensor in val_outputs_list]
 
                         loss = loss_function(outputs, labels)
                         validation_losses.append(loss.item())
@@ -95,7 +113,14 @@ def train_loop(model,
                                 'optimizer_state_dict': optimizer.state_dict(),
                                 'loss': loss
                                 },f"segmentation_models/checkpoint_{model_name}.pth")
+                        
+                        # TDT 17 mini project
+                        dice_metric(y_pred=val_output_convert, y=val_labels_convert)
+                validation_dice = dice_metric.aggregate().item()
+                dice_metric.reset()
 
             writer.add_scalar("Training loss", np.mean(training_losses), epoch)
             writer.add_scalar("Validation loss", np.mean(validation_losses), epoch)
+            writer.add_scalar("Training dice", training_dice, epoch)
+            writer.add_scalar("Validation dice", validation_dice, epoch)
     writer.flush()
