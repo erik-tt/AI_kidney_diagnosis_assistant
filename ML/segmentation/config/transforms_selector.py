@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 from monai.transforms import (
     Compose,
@@ -9,7 +10,9 @@ from monai.transforms import (
     NormalizeIntensityd,
     ToTensord,
     Randomizable,
-    RandGaussianSmoothd
+    GaussianSmoothd,
+    RandRotated,
+    RandZoomd
 )
 
 def remap_labels(label):
@@ -36,7 +39,9 @@ def transforms_selector(transforms_name :str):
     if transforms_name == "config_1":
         transforms = [
             RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
-            RandGaussianSmoothd(keys=["image"])
+            GaussianSmoothd(keys=["image"], sigma=1.0),
+            RandRotated(keys=["image"], range_x= np.pi / 12, prob=0.5),
+            RandZoomd(keys=["image"], prob=0.5, min_zoom=0.9, max_zoom=1.1),
         ]
 
 
