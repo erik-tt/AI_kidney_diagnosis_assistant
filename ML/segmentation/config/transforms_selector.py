@@ -1,4 +1,5 @@
 import torch
+
 from monai.transforms import (
     Compose,
     LoadImaged,
@@ -7,11 +8,12 @@ from monai.transforms import (
     RandFlipd,
     NormalizeIntensityd,
     ToTensord,
-    Randomizable
+    Randomizable,
+    RandGaussianSmoothd
 )
 
 def remap_labels(label):
-    label_mapping = {0: 0, 38: 1, 75: 2}
+    label_mapping = {0: 0, 38: 1, 75: 1}
     remapped_label = label.clone()
     for orig, target in label_mapping.items():
         remapped_label[label == orig] = target
@@ -34,7 +36,10 @@ def transforms_selector(transforms_name :str):
     if transforms_name == "config_1":
         transforms = [
             RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandGaussianSmoothd(keys=["image"])
         ]
+
+
     train_transforms = PRE_TRANSFORMS + transforms + POST_TRANSFORMS
     val_transforms = []
 

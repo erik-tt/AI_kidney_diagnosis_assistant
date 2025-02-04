@@ -10,6 +10,7 @@ import os
 
 def main(params):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    torch.manual_seed(42)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs("./runs", exist_ok=True)
@@ -46,7 +47,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
 
     parser.add_argument("--data", nargs='+', default=["drsprg/post", "drsbru/post"], help="List of data directories")
-    parser.add_argument("--transforms", default="default")
+    parser.add_argument("--transforms", default="config_1")
     parser.add_argument("--model", default="UNet")
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=0)
