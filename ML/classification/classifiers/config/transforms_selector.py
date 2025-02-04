@@ -47,7 +47,7 @@ def transforms_selector(transforms_name :str):
             #Lambdad function needed to switch dimensions, permute suggested by chat GPT
             Lambdad(keys=["image"], func=lambda x: x.permute(0,2,1,3)),
             #Resize temporal dimension and image dimension
-            Resized(keys=["image"], spatial_size=(10, 84, 84)),
+            Resized(keys=["image"], spatial_size=(48, 84, 84)),
         ]
 
     train_transforms = PRE_TRANSFORMS + transforms + POST_TRANSFORMS

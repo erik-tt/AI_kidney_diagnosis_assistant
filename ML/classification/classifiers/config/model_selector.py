@@ -70,8 +70,8 @@ def model_selector(model_name :str, device: torch.device):
     elif (model_name.lower()) == "vit" or (model_name.lower() == "vision_transformer"):
         model = ViT(
             in_channels=1,
-            img_size= (10, 84, 84),
-            patch_size= (2,16,16),
+            img_size= (48, 84, 84),
+            patch_size= (8,8,8),
             spatial_dims=3,
             hidden_size=768,
             num_classes=5

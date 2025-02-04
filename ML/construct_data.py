@@ -17,8 +17,9 @@ def add_dicom_files(base_name, output_path):
                 for filename in files:
                     if (base_name in filename) and filename.endswith(".dcm"):
                         file_path = os.path.join(os.path.join(dynamicrenal, os.path.relpath(root, dynamicrenal)), filename)
-                        #if pydicom.dcmread(file_path).pixel_array.shape == (180, 128, 128):
-                        shutil.copy2(file_path, output_path)
+                        if pydicom.dcmread(file_path).pixel_array.shape[0] > 100:
+                            print(pydicom.dcmread(file_path).pixel_array.shape[0])
+                            shutil.copy2(file_path, output_path)
 
 
 for root, dirs, files in os.walk(input_dir):
