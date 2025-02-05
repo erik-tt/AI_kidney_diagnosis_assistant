@@ -25,7 +25,7 @@ def model_selector(model_name :str, device: torch.device):
             channels=(64,128,256, 512, 1024),
             strides=(2, 2, 2, 2),
             dropout=0.0
-        )
+        ).to(device)
     
     #Unet with residual blocks
     elif model_name.lower() == "resunet":
@@ -37,7 +37,7 @@ def model_selector(model_name :str, device: torch.device):
             strides=(2, 2, 2, 2),
             dropout=0.0,
             num_res_units=1
-        )
+        ).to(device)
     
    #Transformer based architectures
     
@@ -57,7 +57,7 @@ def model_selector(model_name :str, device: torch.device):
             in_channels = 1,
             out_channels= 2,
             img_size = [128, 128]
-        )
+        ).to(device)
     
     else:
         raise ValueError(f"Unkown model: {model_name}, spell it identical to MONAI.io")
