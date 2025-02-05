@@ -46,9 +46,9 @@ def train_loop(model,
                epochs_to_save: int,
                model_name: str):
 
-    loss_function = DiceCELoss(to_onehot_y=True, softmax=True)
+    loss_function = DiceCELoss(include_background=False, to_onehot_y=True, softmax=True)
     optimizer = torch.optim.Adam(model.parameters())
-    dice_metric = DiceMetric(include_background=True, reduction="mean")
+    dice_metric = DiceMetric(include_background=False, reduction="mean")
     post_label = AsDiscrete(to_onehot=3)
     post_pred = AsDiscrete(argmax=True, to_onehot=3)
 
