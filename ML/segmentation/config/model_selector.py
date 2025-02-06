@@ -1,4 +1,4 @@
-from monai.networks.nets import SwinUNETR, UNet, UNETR
+from monai.networks.nets import SwinUNETR, UNet, UNETR, AttentionUnet
 import torch
 
 def model_selector(model_name :str, device: torch.device):
@@ -10,6 +10,7 @@ def model_selector(model_name :str, device: torch.device):
             in_channels=1,
             out_channels=2,
             channels=(64,128,256, 512, 1024),
+            
             strides=(2, 2, 2, 2),
             act=("relu", {"inplace": True}),
             dropout=0.0,
@@ -39,6 +40,16 @@ def model_selector(model_name :str, device: torch.device):
             num_res_units=1
         ).to(device)
     
+    elif model_name.lower() == "attentionunet":
+        return AttentionUnet(
+            spatial_dims=2,
+            in_channels=1,
+            out_channels=2,
+            channels=(64,128,256, 512, 1024),
+            strides=(2, 2, 2, 2),
+            dropout=0.0,
+        ).to(device)
+
    #Transformer based architectures
     
     #Swin transformer as encoder and CNN as decoder
