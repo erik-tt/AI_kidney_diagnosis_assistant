@@ -1,6 +1,6 @@
 import torch
 from monai.losses import DiceCELoss
-from monai.metrics import DiceMetric
+from monai.metrics import DiceMetric, MeanIoU
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -46,9 +46,10 @@ def train_loop(model,
                epochs_to_save: int,
                model_name: str):
 
-    loss_function = DiceCELoss(to_onehot_y=True, softmax=True)
+    loss_function = DiceCELoss(include_background=False, to_onehot_y=True, softmax=True)
     optimizer = torch.optim.Adam(model.parameters())
-    dice_metric = DiceMetric(include_background=True, reduction="mean")
+    dice_metric = DiceMetric(include_background=False, reduction="mean")
+    iou = MeanIoU(include_background=False, reduction="mean")
     post_label = AsDiscrete(to_onehot=3)
     post_pred = AsDiscrete(argmax=True, to_onehot=3)
 
@@ -116,11 +117,17 @@ def train_loop(model,
                         
                         # TDT 17 mini project
                         dice_metric(y_pred=val_output_convert, y=val_labels_convert)
+                        iou(y_pred=val_output_convert, y=val_labels_convert)
+
+
                 validation_dice = dice_metric.aggregate().item()
+                validation_iou = iou.aggregate().item()
                 dice_metric.reset()
+                iou.reset()
 
             writer.add_scalar("Training loss", np.mean(training_losses), epoch)
             writer.add_scalar("Validation loss", np.mean(validation_losses), epoch)
             writer.add_scalar("Training dice", training_dice, epoch)
-            writer.add_scalar("Validation dice", validation_dice, epoch)
+            writer.add_scalar("Validation mean dice", validation_dice, epoch)
+            writer.add_scalar("Validation mean iou", validation_iou, epoch)
     writer.flush()
