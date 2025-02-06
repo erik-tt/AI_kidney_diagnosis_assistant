@@ -27,7 +27,7 @@ def main(params):
     
     if params.k_fold:
         data = create_dataset_kfold(params.data)
-        k_fold_validation(model,
+        k_fold_validation(model_name=params.model,
                       dataset=data, 
                       epochs=params.num_epochs, 
                       batch_size=params.batch_size, 

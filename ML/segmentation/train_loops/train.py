@@ -10,6 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 import os 
 from datetime import datetime
 from sklearn.model_selection import KFold
+from config.model_selector import model_selector
 from config.transforms_selector import transforms_selector
 
     
@@ -173,7 +174,7 @@ def train_loop(model,
     writer.flush()
 
 
-def k_fold_validation(model,
+def k_fold_validation(model_name,
                       dataset, 
                       epochs:int, 
                       batch_size: int, 
@@ -183,15 +184,20 @@ def k_fold_validation(model,
                       num_workers: int,
                       splits: int = 5):
     
-    loss_function = DiceCELoss(include_background=False, to_onehot_y=True, softmax=True)
-    optimizer = torch.optim.Adam(model.parameters())
-    dice_metric = DiceMetric(include_background=False, reduction="mean")
     
     kfold = KFold(n_splits=splits, shuffle=True, random_state=42)
 
     train_transforms, val_transforms = transforms_selector(transforms_name)
 
     for fold, (train_idx, val_idx) in enumerate(kfold.split(dataset)):
+        
+        #Need to reinitalize the model every time
+        model = model_selector(model_name, device)
+        loss_function = DiceCELoss(include_background=False, to_onehot_y=True, softmax=True)
+        optimizer = torch.optim.Adam(model.parameters())
+        dice_metric = DiceMetric(include_background=False, reduction="mean")
+
+        print(f"Fold {fold}/{splits}")
 
         train_set = [dataset[i] for i in train_idx]
         val_set = [dataset[i] for i in val_idx]
@@ -204,6 +210,8 @@ def k_fold_validation(model,
         print(train_dataloader)
 
         for epoch in range(epochs):
+             print("-" * 10)
+             print(f"epoch {epoch + 1}/{epochs}")
              training_loss, training_dice = train(model, 
                                                 loss_function, 
                                                 train_dataloader,
@@ -221,10 +229,15 @@ def k_fold_validation(model,
                                                 log=False
                                                 )
         
-        writer.add_scalar("Training loss", np.mean(training_loss), epoch)
-        writer.add_scalar("Validation loss", np.mean(validation_loss), epoch)
-        writer.add_scalar("Training dice", training_dice, epoch)
-        writer.add_scalar("Validation dice", validation_dice, epoch)
+        print(f"Training loss: {np.mean(training_loss)}")
+        print(f"Validation loss: {np.mean(validation_loss)}")
+        print(f"Training dice: {training_dice}")
+        print(f"Validation dice: {validation_dice}")
+        
+        writer.add_scalar("Training loss", np.mean(training_loss), fold)
+        writer.add_scalar("Validation loss", np.mean(validation_loss), fold)
+        writer.add_scalar("Training dice", training_dice, fold)
+        writer.add_scalar("Validation dice", validation_dice, fold)
     writer.flush()
 
 
