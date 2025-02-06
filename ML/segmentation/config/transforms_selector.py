@@ -23,7 +23,20 @@ from monai.transforms import (
     RandHistogramShiftd,
     RandGaussianSmoothd,
     RandGaussianSharpend,
-    RandCoarseShuffled
+    RandCoarseShuffled,
+    RandSpatialCropd,
+    RandRotate90d,
+    RandShiftIntensityd,
+    RandSpatialCropSamplesd,
+    RandGaussianNoised,
+    RandBiasFieldd,
+    GibbsNoised,
+    KSpaceSpikeNoised,
+    RandRicianNoised,
+    AdjustContrastd,
+    SavitzkyGolaySmoothd,
+    MedianSmoothd,
+    GaussianSharpend
 )
 
 def remap_labels(label):
@@ -209,6 +222,126 @@ def transforms_selector(transforms_name :str):
             RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
             GaussianSmoothd(keys=["image"], sigma=1.0),
             RandCoarseDropoutd(keys=["image", "label"], holes=5, spatial_size=5),
+        ]
+    elif transforms_name == "config_26":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandFlipd(keys=["image", "label"], spatial_axis=1, prob=0.5),
+        ]
+    elif transforms_name == "config_26":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandSpatialCropSamplesd(
+                keys=["image", "label"],
+                num_samples=4,
+                roi_size=(32,32),
+                random_size=False,
+            ),
+        ]
+    elif transforms_name == "config_27":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandRotate90d(
+                keys=["image", "label"],
+                prob=0.10,
+                max_k=3,
+            ),
+        ]
+    elif transforms_name == "config_28":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandCropByPosNegLabeld(
+                keys=["image", "label"],
+                label_key="label",
+                spatial_size=(64, 64),
+                pos=1,
+                neg=1,
+                num_samples=4,
+                image_key="image",
+                image_threshold=0,
+            ),
+        ]
+    elif transforms_name == "config_29":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandCropByPosNegLabeld(
+                keys=["image", "label"],
+                label_key="label",
+                spatial_size=(32, 32),
+                pos=1,
+                neg=1,
+                num_samples=4,
+                image_key="image",
+                image_threshold=0,
+            ),
+        ]
+    elif transforms_name == "config_30":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandShiftIntensityd(
+                keys=["image"],
+                offsets=0.10,
+                prob=0.50,
+            ),
+        ]
+    elif transforms_name == "config_31":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandCropByPosNegLabeld(
+                keys=["image", "label"],
+                label_key="label",
+                spatial_size=(96, 96),
+                pos=1,
+                neg=1,
+                num_samples=2,
+                image_key="image",
+                image_threshold=0,
+            ),
+        ]
+    elif transforms_name == "config_32":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandGaussianNoised(keys="image"),
+        ]
+    elif transforms_name == "config_33":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandBiasFieldd(keys="image"),
+        ]
+    elif transforms_name == "config_34":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            GibbsNoised(keys="image"),
+        ]
+    elif transforms_name == "config_35":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            KSpaceSpikeNoised(keys="image", loc=(64,64), k_intensity=13),
+        ]
+    elif transforms_name == "config_36":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandRicianNoised(keys="image"),
+        ]
+    elif transforms_name == "config_37":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            AdjustContrastd(keys="image", gamma=2),
+        ]
+    elif transforms_name == "config_38":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            SavitzkyGolaySmoothd(keys="image", window_length=5, order=1),
+        ]
+    elif transforms_name == "config_39":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            MedianSmoothd(keys="image", radius=1),
+        ]
+    elif transforms_name == "config_40":
+        transforms = [
+            RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            GaussianSharpend(keys="image"),
         ]
 
 
