@@ -254,9 +254,13 @@ def k_fold_validation(model_name,
         print(f"Validation precision: {validation_precision}")
         print(f"Validation recall: {validation_recall}")
         
+        #Write the model metrics to tensorboard
         writer.add_scalar("Training loss", np.mean(training_loss), fold)
         writer.add_scalar("Validation loss", np.mean(validation_loss), fold)
         writer.add_scalar("Training dice", training_dice, fold)
         writer.add_scalar("Validation dice", validation_dice, fold)
+        writer.add_scalar("Validation IoU", validation_iou, fold)
+        writer.add_scalar("Validation precision", validation_precision, fold)
+        writer.add_scalar("Validation recall", validation_recall, fold)
     writer.flush()
 
