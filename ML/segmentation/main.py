@@ -73,9 +73,9 @@ if __name__ == "__main__":
     parser.add_argument("--model", default="UNet")
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--num_epochs", type=int, default=30)
+    parser.add_argument("--num_epochs", type=int, default=2)
     parser.add_argument("--lr", type=int, default=0.001)
-    parser.add_argument("--save",type=int, default=10)
+    parser.add_argument("--save",type=int, default=2)
     parser.add_argument("--k_fold",type=int, default=None)
 
     args = parser.parse_args()
