@@ -10,6 +10,7 @@ ML/segmentation/segmentation_models
 ML/classification/classifiers/classification_models
 ML/classification/classifiers/runs
 ML/classification/classifiers/nohup.out
+ML/segmentation/nohup.out
 
 # C extensions
 *.so
