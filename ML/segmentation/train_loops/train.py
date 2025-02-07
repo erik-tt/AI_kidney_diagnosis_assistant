@@ -197,7 +197,7 @@ def k_fold_validation(model_name,
         optimizer = torch.optim.Adam(model.parameters())
         dice_metric = DiceMetric(include_background=False, reduction="mean")
 
-        print(f"Fold {fold}/{splits}")
+        print(f"Fold {fold + 1}/{splits}")
 
         train_set = [dataset[i] for i in train_idx]
         val_set = [dataset[i] for i in val_idx]
@@ -207,7 +207,6 @@ def k_fold_validation(model_name,
 
         train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
         val_dataloader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-        print(train_dataloader)
 
         for epoch in range(epochs):
              print("-" * 10)
