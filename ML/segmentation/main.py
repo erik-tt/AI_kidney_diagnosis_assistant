@@ -69,14 +69,14 @@ if __name__ == "__main__":
     parser = ArgumentParser()
 
     parser.add_argument("--data", nargs='+', default=["drsprg/post", "drsbru/post"], help="List of data directories")
-    parser.add_argument("--transforms", default="config_1")
-    parser.add_argument("--model", default="UNet")
+    parser.add_argument("--transforms", default="baseline")
+    parser.add_argument("--model", default="baseline")
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--num_epochs", type=int, default=2)
+    parser.add_argument("--num_epochs", type=int, default=50)
     parser.add_argument("--lr", type=int, default=0.001)
     parser.add_argument("--save",type=int, default=2)
-    parser.add_argument("--k_fold",type=int, default=None)
+    parser.add_argument("--k_fold",type=int, default=5)
 
     args = parser.parse_args()
 
