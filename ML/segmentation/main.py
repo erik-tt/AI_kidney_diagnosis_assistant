@@ -1,8 +1,8 @@
 from argparse import ArgumentParser
 from monai.data import DataLoader
-from train_loops.train import train_loop
+from train_loops.train import train_loop, k_fold_validation
 from config.model_selector import model_selector
-from utils.create_dataset import create_dataset
+from utils.create_dataset import create_dataset, create_dataset_kfold
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
@@ -33,25 +33,38 @@ def main(params):
     writer.add_text("Learning rate", f"Learning rate: {params.lr}", global_step=0)
     writer.add_text("Datadir", f"Data directories: {params.data}", global_step=0)
 
-    train_dataset, test_dataset = create_dataset(params.data, params.transforms)
-
-    train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers)
-    val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers) 
-
     model = model_selector(params.model, device)
+    
+    if params.k_fold:
+        data = create_dataset_kfold(params.data)
+        k_fold_validation(model_name=params.model,
+                      dataset=data, 
+                      epochs=params.num_epochs, 
+                      batch_size=params.batch_size, 
+                      device=device,
+                      writer=writer,
+                      transforms_name=params.transforms,
+                      num_workers=params.num_workers,
+                      splits=params.k_fold)
+    
+    else:
+        train_dataset, test_dataset = create_dataset(params.data, params.transforms)
 
-    train_loop(
-        model=model,
-        epochs=params.num_epochs,
-        train_dataloader=train_dataloader,
-        val_dataloader=val_dataloader,
-        device=device,
-        writer=writer,
-        epochs_to_save=params.save,
-        model_name=params.model
-    )
+        train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers)
+        val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers) 
 
-    writer.close()
+        train_loop(
+            model=model,
+            epochs=params.num_epochs,
+            train_dataloader=train_dataloader,
+            val_dataloader=val_dataloader,
+            device=device,
+            writer=writer,
+            epochs_to_save=params.save,
+            model_name=params.model
+        )
+
+        writer.close()
 if __name__ == "__main__":
     parser = ArgumentParser()
 
@@ -63,6 +76,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_epochs", type=int, default=30)
     parser.add_argument("--lr", type=int, default=0.001)
     parser.add_argument("--save",type=int, default=10)
+    parser.add_argument("--k_fold",type=int, default=None)
 
     args = parser.parse_args()
 
