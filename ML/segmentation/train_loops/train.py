@@ -1,6 +1,6 @@
 import torch
 from monai.losses import DiceCELoss
-from monai.metrics import DiceMetric, MeanIoU
+from monai.metrics import DiceMetric, MeanIoU, ConfusionMatrixMetric
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -49,12 +49,13 @@ def train(model,
         loss_function,
         train_dataloader: DataLoader, 
         device: torch.device,
-        optimizer,
-        metric,
+        optimizer
         ):
     
     model.train()
     training_losses = []
+
+    dice_metric = DiceMetric(include_background=False, reduction="mean")
     
     for batch_data in tqdm(train_dataloader):
         images, labels = batch_data["image"].to(device), batch_data["label"].to(device) 
@@ -66,7 +67,6 @@ def train(model,
         optimizer.step()
         training_losses.append(loss.item())
 
-
         # Fra tdt17 min project
         train_labels_list = decollate_batch(labels)
         train_labels_convert = [AsDiscrete()(label) for label in train_labels_list]
@@ -77,9 +77,9 @@ def train(model,
         train_outputs_convert = [remove_objects(pred.to(torch.uint8)) for pred in train_outputs_convert]
 
         # Fra tdt17 mini project
-        metric(y_pred=train_outputs_convert, y=train_labels_convert)
-    training_dice = metric.aggregate().item()
-    metric.reset()
+        dice_metric(y_pred=train_outputs_convert, y=train_labels_convert)
+    training_dice = dice_metric.aggregate().item()
+    dice_metric.reset()
 
     return np.mean(training_losses), training_dice
 
@@ -88,18 +88,19 @@ def validate(model,
             val_dataloader: DataLoader, 
             device: torch.device,
             optimizer,
-            metric,
             writer, 
             epoch=None, 
             epochs_to_save=None, 
             model_name=None,
             log=True
             ):
-
+    
+    dice_metric = DiceMetric(include_background=False, reduction="mean")
+    iou_metric = MeanIoU(include_background=False, reduction="mean")
+    precision_metric = ConfusionMatrixMetric(metric_name="precision", include_background=False, reduction="mean")
+    recall_metric = ConfusionMatrixMetric(metric_name="recall", include_background=False, reduction="mean")
+     
     validation_losses = []
-    #test
-    dice_scores_raw = []
-    dice_scores_post = []
     model.eval()
     with torch.no_grad():
         for batch in tqdm(val_dataloader):
@@ -116,8 +117,8 @@ def validate(model,
                 val_outputs_list = decollate_batch(outputs)
                 val_outputs_convert = [AsDiscrete(argmax=True)(pred) for pred in val_outputs_list]
 
-                val_outputs_convert_post = [fill_holes(pred.to(torch.uint8)) for pred in val_outputs_convert]
-                val_outputs_convert_post = [remove_objects(pred.to(torch.uint8)) for pred in val_outputs_convert_post]
+                val_outputs_convert = [fill_holes(pred.to(torch.uint8)) for pred in val_outputs_convert]
+                val_outputs_convert = [remove_objects(pred.to(torch.uint8)) for pred in val_outputs_convert]
 
                 if log and (epoch + 1) % epochs_to_save == 0:
                     #Log the histograms of model weights
@@ -138,11 +139,22 @@ def validate(model,
                     
                 
                 # TDT 17 mini project
-                metric(y_pred=val_outputs_convert_post, y=val_labels_convert)
-        validation_dice = metric.aggregate().item()
-        metric.reset()
+                dice_metric(y_pred=val_outputs_convert, y=val_labels_convert)
+                iou_metric(y_pred=val_outputs_convert, y=val_labels_convert)
+                precision_metric(y_pred=val_outputs_convert, y=val_labels_convert)
+                recall_metric(y_pred=val_outputs_convert, y=val_labels_convert)
 
-        return np.mean(validation_losses), validation_dice
+        #Take mean for every batch
+        validation_dice = dice_metric.aggregate().item()
+        validation_iou = iou_metric.aggregate().item()
+        validation_precision = precision_metric.aggregate()[0].item()
+        validation_recall = recall_metric.aggregate()[0].item()
+
+        #Reset the metrics
+        dice_metric.reset()
+        iou_metric.reset()
+
+        return np.mean(validation_losses), validation_dice, validation_iou, validation_precision, validation_recall
 
 
 def train_loop(model, 
@@ -156,8 +168,6 @@ def train_loop(model,
 
     loss_function = DiceCELoss(include_background=False, to_onehot_y=True, softmax=True)
     optimizer = torch.optim.Adam(model.parameters())
-    dice_metric = DiceMetric(include_background=False, reduction="mean")
-    iou = MeanIoU(include_background=False, reduction="mean")
 
     for epoch in range(epochs):
         print("-" * 10)
@@ -168,20 +178,26 @@ def train_loop(model,
                                                 train_dataloader,
                                                 device,
                                                 optimizer,
-                                                dice_metric,
                                                 )
         
-        validation_loss, validation_dice = validate(model, 
+        validation_loss, validation_dice, validation_iou, validation_precision, validation_recall = validate(model, 
                                                 loss_function, 
                                                 val_dataloader,
                                                 device,
                                                 optimizer,
-                                                dice_metric,
                                                 writer,
                                                 epoch,
                                                 epochs_to_save,
                                                 model_name,
                                                 )
+        
+        print(f"Training loss: {np.mean(training_loss)}")
+        print(f"Validation loss: {np.mean(validation_loss)}")
+        print(f"Training dice: {training_dice}")
+        print(f"Validation dice: {validation_dice}")
+        print(f"Validation IoU: {validation_iou}")
+        print(f"Validation precision: {validation_precision}")
+        print(f"Validation recall: {validation_recall}")
         
         writer.add_scalar("Training loss", np.mean(training_loss), epoch)
         writer.add_scalar("Validation loss", np.mean(validation_loss), epoch)
@@ -211,9 +227,8 @@ def k_fold_validation(model_name,
         model = model_selector(model_name, device)
         loss_function = DiceCELoss(include_background=False, to_onehot_y=True, softmax=True)
         optimizer = torch.optim.Adam(model.parameters())
-        dice_metric = DiceMetric(include_background=False, reduction="mean")
 
-        print(f"Fold {fold + 1}/{splits}")
+        print(f"Fold {fold+1}/{splits}")
 
         train_set = [dataset[i] for i in train_idx]
         val_set = [dataset[i] for i in val_idx]
@@ -231,27 +246,31 @@ def k_fold_validation(model_name,
                                                 loss_function, 
                                                 train_dataloader,
                                                 device,
-                                                optimizer,
-                                                dice_metric)
+                                                optimizer)
         
-        validation_loss, validation_dice_raw = validate(model, 
-                                                        loss_function, 
-                                                        val_dataloader,
-                                                        device,
-                                                        optimizer,
-                                                        dice_metric,
-                                                        writer,
-                                                        log=False
-                                                        )
-                
+        validation_loss, validation_dice, validation_iou, validation_precision, validation_recall = validate(model, 
+                                                loss_function, 
+                                                val_dataloader,
+                                                device,
+                                                optimizer,
+                                                writer,
+                                                log=False)
+        
         print(f"Training loss: {np.mean(training_loss)}")
         print(f"Validation loss: {np.mean(validation_loss)}")
         print(f"Training dice: {training_dice}")
-        print(f"Validation dice raw: {validation_dice_raw}")
+        print(f"Validation dice: {validation_dice}")
+        print(f"Validation IoU: {validation_iou}")
+        print(f"Validation precision: {validation_precision}")
+        print(f"Validation recall: {validation_recall}")
         
+        #Write the model metrics to tensorboard
         writer.add_scalar("Training loss", np.mean(training_loss), fold)
         writer.add_scalar("Validation loss", np.mean(validation_loss), fold)
         writer.add_scalar("Training dice", training_dice, fold)
-        writer.add_scalar("Validation dice", validation_dice_raw, fold)
+        writer.add_scalar("Validation dice", validation_dice, fold)
+        writer.add_scalar("Validation IoU", validation_iou, fold)
+        writer.add_scalar("Validation precision", validation_precision, fold)
+        writer.add_scalar("Validation recall", validation_recall, fold)
     writer.flush()
 
