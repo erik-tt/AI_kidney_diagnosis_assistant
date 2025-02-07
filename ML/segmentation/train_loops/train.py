@@ -12,9 +12,12 @@ from datetime import datetime
 from sklearn.model_selection import KFold
 from config.model_selector import model_selector
 from config.transforms_selector import transforms_selector
+from monai.transforms import RemoveSmallObjects, FillHoles
 
-    
+# Global Variables
 
+remove_objects = RemoveSmallObjects(min_size=20, connectivity=2)
+fill_holes = FillHoles(connectivity=2)
 
 def plot_output(model_output, image, label):
 
@@ -58,17 +61,21 @@ def train(model,
         optimizer.zero_grad()
         outputs = model(images)
 
-        # Fra tdt17 min project
-        train_labels_list = decollate_batch(labels)
-        train_labels_convert = [AsDiscrete(to_onehot=3)(label) for label in train_labels_list]
-        train_outputs_list = decollate_batch(outputs)
-        train_outputs_convert = [AsDiscrete(argmax=True, to_onehot=3)(pred) for pred in train_outputs_list]
-
         loss = loss_function(outputs, labels)
         loss.backward()
         optimizer.step()
         training_losses.append(loss.item())
+
+
+        # Fra tdt17 min project
+        train_labels_list = decollate_batch(labels)
+        train_labels_convert = [AsDiscrete()(label) for label in train_labels_list]
+        train_outputs_list = decollate_batch(outputs)
+        train_outputs_convert = [AsDiscrete(argmax=True)(pred) for pred in train_outputs_list]
         
+        train_outputs_convert = [fill_holes(pred.to(torch.uint8)) for pred in train_outputs_convert]
+        train_outputs_convert = [remove_objects(pred.to(torch.uint8)) for pred in train_outputs_convert]
+
         # Fra tdt17 mini project
         metric(y_pred=train_outputs_convert, y=train_labels_convert)
     training_dice = metric.aggregate().item()
@@ -88,8 +95,11 @@ def validate(model,
             model_name=None,
             log=True
             ):
-     
+
     validation_losses = []
+    #test
+    dice_scores_raw = []
+    dice_scores_post = []
     model.eval()
     with torch.no_grad():
         for batch in tqdm(val_dataloader):
@@ -97,14 +107,17 @@ def validate(model,
 
                 outputs = model(images)
 
-                # Fra tdt17 mini project
-                val_labels_list = decollate_batch(labels)
-                val_labels_convert = [AsDiscrete(to_onehot=3)(label) for label in val_labels_list]
-                val_outputs_list = decollate_batch(outputs)
-                val_outputs_convert = [AsDiscrete(argmax=True, to_onehot=3)(pred) for pred in val_outputs_list]
-
                 loss = loss_function(outputs, labels)
                 validation_losses.append(loss.item())
+
+                # Fra tdt17 mini project
+                val_labels_list = decollate_batch(labels)
+                val_labels_convert = [AsDiscrete()(label) for label in val_labels_list]
+                val_outputs_list = decollate_batch(outputs)
+                val_outputs_convert = [AsDiscrete(argmax=True)(pred) for pred in val_outputs_list]
+
+                val_outputs_convert_post = [fill_holes(pred.to(torch.uint8)) for pred in val_outputs_convert]
+                val_outputs_convert_post = [remove_objects(pred.to(torch.uint8)) for pred in val_outputs_convert_post]
 
                 if log and (epoch + 1) % epochs_to_save == 0:
                     #Log the histograms of model weights
@@ -112,7 +125,7 @@ def validate(model,
                             writer.add_histogram(name, param, epoch)
 
                     writer.add_figure("ground truth vs output",
-                        plot_output(outputs[0], images[0], labels[0]),
+                        plot_output(outputs[0], images[0], labels[0]), #val outputs convert aswell
                         global_step = epoch)
 
                     #Save checkpoint
@@ -122,9 +135,10 @@ def validate(model,
                         'optimizer_state_dict': optimizer.state_dict(),
                         'loss': loss
                         },f"segmentation_models/checkpoint_{model_name}.pth")
+                    
                 
                 # TDT 17 mini project
-                metric(y_pred=val_outputs_convert, y=val_labels_convert)
+                metric(y_pred=val_outputs_convert_post, y=val_labels_convert)
         validation_dice = metric.aggregate().item()
         metric.reset()
 
@@ -144,8 +158,6 @@ def train_loop(model,
     optimizer = torch.optim.Adam(model.parameters())
     dice_metric = DiceMetric(include_background=False, reduction="mean")
     iou = MeanIoU(include_background=False, reduction="mean")
-    post_label = AsDiscrete(to_onehot=3)
-    post_pred = AsDiscrete(argmax=True, to_onehot=3)
 
     for epoch in range(epochs):
         print("-" * 10)
@@ -156,7 +168,8 @@ def train_loop(model,
                                                 train_dataloader,
                                                 device,
                                                 optimizer,
-                                                dice_metric)
+                                                dice_metric,
+                                                )
         
         validation_loss, validation_dice = validate(model, 
                                                 loss_function, 
@@ -167,7 +180,7 @@ def train_loop(model,
                                                 writer,
                                                 epoch,
                                                 epochs_to_save,
-                                                model_name
+                                                model_name,
                                                 )
         
         writer.add_scalar("Training loss", np.mean(training_loss), epoch)
@@ -221,24 +234,24 @@ def k_fold_validation(model_name,
                                                 optimizer,
                                                 dice_metric)
         
-        validation_loss, validation_dice = validate(model, 
-                                                loss_function, 
-                                                val_dataloader,
-                                                device,
-                                                optimizer,
-                                                dice_metric,
-                                                writer,
-                                                log=False
-                                                )
-        
+        validation_loss, validation_dice_raw = validate(model, 
+                                                        loss_function, 
+                                                        val_dataloader,
+                                                        device,
+                                                        optimizer,
+                                                        dice_metric,
+                                                        writer,
+                                                        log=False
+                                                        )
+                
         print(f"Training loss: {np.mean(training_loss)}")
         print(f"Validation loss: {np.mean(validation_loss)}")
         print(f"Training dice: {training_dice}")
-        print(f"Validation dice: {validation_dice}")
+        print(f"Validation dice raw: {validation_dice_raw}")
         
         writer.add_scalar("Training loss", np.mean(training_loss), fold)
         writer.add_scalar("Validation loss", np.mean(validation_loss), fold)
         writer.add_scalar("Training dice", training_dice, fold)
-        writer.add_scalar("Validation dice", validation_dice, fold)
+        writer.add_scalar("Validation dice", validation_dice_raw, fold)
     writer.flush()
 
