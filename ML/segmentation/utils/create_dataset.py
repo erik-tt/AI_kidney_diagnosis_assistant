@@ -28,7 +28,7 @@ def create_dataset(paths: List[str],
         dataset,
         test_size=test_size,      
         random_state=random_state,     
-        shuffle=shuffle         
+        shuffle=shuffle,
     )
             
     train_transforms, val_transforms = transforms_selector(transforms_name)

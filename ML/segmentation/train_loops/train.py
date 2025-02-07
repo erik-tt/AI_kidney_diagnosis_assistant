@@ -1,6 +1,6 @@
 import torch
 from monai.losses import DiceCELoss
-from monai.metrics import DiceMetric
+from monai.metrics import DiceMetric, MeanIoU
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -142,7 +142,10 @@ def train_loop(model,
 
     loss_function = DiceCELoss(include_background=False, to_onehot_y=True, softmax=True)
     optimizer = torch.optim.Adam(model.parameters())
-    dice_metric = DiceMetric(include_background=True, reduction="mean")
+    dice_metric = DiceMetric(include_background=False, reduction="mean")
+    iou = MeanIoU(include_background=False, reduction="mean")
+    post_label = AsDiscrete(to_onehot=3)
+    post_pred = AsDiscrete(argmax=True, to_onehot=3)
 
     for epoch in range(epochs):
         print("-" * 10)
@@ -238,7 +241,4 @@ def k_fold_validation(model_name,
         writer.add_scalar("Training dice", training_dice, fold)
         writer.add_scalar("Validation dice", validation_dice, fold)
     writer.flush()
-
-
-
 
