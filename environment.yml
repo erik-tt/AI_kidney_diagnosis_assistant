@@ -25,6 +25,7 @@ dependencies:
   - pip
   - tensorboard
   - einops
+  - plotly
   - pip:
     - labelme
     - SimpleITK
