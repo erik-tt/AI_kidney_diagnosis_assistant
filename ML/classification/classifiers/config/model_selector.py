@@ -17,7 +17,7 @@ def get_mobilenetv3():
         stride=original_first_layer.stride,
         padding=original_first_layer.padding,
         bias=False
-    )
+    ).to(device)
     return mobilenet_v3
 
 
@@ -35,7 +35,7 @@ def model_selector(model_name :str, device: torch.device):
             layers = [2, 2, 2, 2],
             block_inplanes=[64, 128, 256, 512],
             spatial_dims=3
-        )
+        ).to(device)
         return model
     
     elif model_name.lower() == "resnet18":
@@ -43,7 +43,7 @@ def model_selector(model_name :str, device: torch.device):
             model_name='resnet18',
             num_classes=5,
             pretrained=True
-        )
+        ).to(device)
         return model
     
     elif model_name.lower() == "resnet50":
@@ -51,7 +51,7 @@ def model_selector(model_name :str, device: torch.device):
             model_name='resnet50',
             num_classes=5,
             pretrained=True
-        )
+        ).to(device)
         return model
     
     elif model_name.lower() == "efficientnet":
@@ -59,7 +59,7 @@ def model_selector(model_name :str, device: torch.device):
             model_name="efficientnet-b1",
             in_channels=1,
             pretrained=False
-        )
+        ).to(device)
         return model
     
     elif model_name.lower() == "mobilenetv3":
@@ -75,7 +75,7 @@ def model_selector(model_name :str, device: torch.device):
             spatial_dims=3,
             hidden_size=768,
             num_classes=5
-        )
+        ).to(device)
         return model
     
     else:
