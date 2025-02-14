@@ -228,7 +228,7 @@ def k_fold_validation(model_name,
         loss_function = DiceCELoss(include_background=False, to_onehot_y=True, softmax=True)
         optimizer = torch.optim.Adam(model.parameters())
 
-        print(f"Fold {fold+1}/{splits}")
+        print(f"Iteration {fold+1}/{splits}")
 
         train_set = [dataset[i] for i in train_idx]
         val_set = [dataset[i] for i in val_idx]
