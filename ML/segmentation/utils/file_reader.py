@@ -1,10 +1,33 @@
 import os
+import glob
 import re
 
 class FileReader:
     def __init__(self, base_dir):
         self.base_dir = base_dir
 
+    def get_image_data(self, folder_name, file_suffixes):
+        data = []
+        path = os.path.join(self.base_dir, "dataset", folder_name)
+
+        
+        patterns = [
+            (suffix, re.compile(rf"_{re.escape(suffix)}\.(dcm|nii\.gz)$", re.IGNORECASE))
+            for suffix in file_suffixes
+        ]
+                                       
+        for root, _, files in os.walk(path):
+            entry = {}
+            for file in files:
+                for suffix, pattern in patterns:
+                    if pattern.search(file):
+                        file_path = os.path.join(root, file)
+                        entry[suffix] = file_path
+            if entry:  
+                data.append(entry)
+
+        return data
+            
     def get_data_file_paths(self, folder_name, suffix):
         file_paths = []
         pattern = re.compile(r"^[a-zA-Z]+_\d+_" + re.escape(suffix) + r"\.dcm$", re.IGNORECASE)
@@ -32,6 +55,8 @@ class FileReader:
             label_path = None
 
             for file in files:
+                print(absolute_path)
+                print(file)
                 if "image" in file:
                     image_path = os.path.join(absolute_path, file)
                 elif "label" in file:
@@ -39,7 +64,7 @@ class FileReader:
                 elif "dcm" in file:
                     continue
                 else:
-                    raise ValueError("data does not contain label or image")
+                    continue
                 
         
             data.append({"image": image_path, "label": label_path})
