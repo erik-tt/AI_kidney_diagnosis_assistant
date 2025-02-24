@@ -29,23 +29,25 @@ def train_loop(model,
                epochs_to_save: int,
                model_name: str):
 
-    loss_function = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters())
-
-    training_losses = []
-    validation_losses = []
-    training_accuracy = []
-    validation_accuracy = []
-
+    loss_function = torch.nn.CrossEntropyLoss() # CAN USE LABEL SMOOTHING 
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=0.01) # With regularization
 
     # Training loop
     for epoch in range(epochs):
+            training_losses = []
+            validation_losses = []
+            training_accuracy = []
+            validation_accuracy = []
             print("-" * 10)
             print(f"epoch {epoch + 1}/{epochs}")
             model.train()
 
             training_losses = []
-    
+            training_labels = []
+            training_predictions = []
+            
+            correct = 0
+            total = 0
             for batch_data in tqdm(train_dataloader):
                 images, labels = batch_data["image"].to(device), batch_data["label"].to(device, dtype=torch.long) 
                 #Labels should be 1 index
@@ -54,17 +56,28 @@ def train_loop(model,
 
                 outputs = model(images)
                 
-                if isinstance(outputs, tuple):
+                #if isinstance(outputs, tuple):
                      #ViT fix
-                     outputs = outputs[0]
-                     outputs = outputs[:, 0, :]
+                     #outputs = outputs[0]
+                     #outputs = outputs[:, 0, :]
                 
                 loss = loss_function(outputs, labels)
                 loss.backward()
                 optimizer.step()
                 training_losses.append(loss.item())
 
-            
+                _, predicted = torch.max(outputs.data, 1)
+
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+
+                training_labels.extend(labels.cpu().numpy())
+                training_predictions.extend(predicted.cpu().numpy())
+
+            training_accuracy.append(correct / total)
+           # if (epoch + 1) % epochs_to_save == 0:
+                #for i in range(images.shape[1]):  # Loop over depth dimension
+                    #writer.add_image(f"DICOM_Slice_{i}", images[0, i, 0, :, :], global_step=i, dataformats='HW')
             
             correct = 0
             total = 0
@@ -112,13 +125,14 @@ def train_loop(model,
                         },f"classification_models/checkpoint_{model_name}.pth")
 
             validation_accuracy.append(correct / total)
-
             print(f"""Epoch {epoch+1}, Average Training Loss: {np.mean(training_losses)},
                    Average Validation Loss: {np.mean(validation_losses)}
-                   Average Accuracy: {np.mean(validation_accuracy)}%""")
+                   Average Accuracy: {validation_accuracy},
+                   Average Training Accuracy: {training_accuracy}%""")
             
             writer.add_scalar("Average training loss", np.mean(training_losses), epoch)
             writer.add_scalar("Average validation loss", np.mean(validation_losses), epoch)
             writer.add_scalar("Average accuracy", np.mean(validation_accuracy), epoch)
+            writer.add_scalar("Average Training accuracy", np.mean(training_accuracy), epoch)
 
     writer.flush()
