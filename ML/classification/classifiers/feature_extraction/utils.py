@@ -39,6 +39,9 @@ def process_df(radiomic_feature_path, label_paths, feature_columns = None):
     # Burde også sjekke om noen entries har nans
     df = df[df["ImageName"].str.contains("drsprg", case=False, na=False)]
 
+    df = df[df["Region"] != 75] # FIX
+
+    #print(df)
     # FOR NÅ: 025 og 065 har ikke 180 bilder, sjekke om dette stemmer
     timestep_counts = df.groupby("ImageName")["TimeStep"].nunique()
     most_common_count = timestep_counts.mode()[0]
@@ -48,11 +51,11 @@ def process_df(radiomic_feature_path, label_paths, feature_columns = None):
     df = df[~df["ImageName"].isin(image_names_to_remove)]
 
     # Burdee egt concatenate region
-    df_grouped = df.groupby(["ImageName", "Region", "CKD"])
+    df_grouped = df.groupby(["ImageName", "Region"])
 
     X = np.stack(df_grouped[feature_columns].apply(lambda x: x.to_numpy()).values) 
     y = df_grouped["CKD"].first().values
-    
+
     # Scale each feature
     num_samples, num_timesteps, num_features = X.shape
     X_reshaped = X.reshape(-1, num_features)  
@@ -60,8 +63,18 @@ def process_df(radiomic_feature_path, label_paths, feature_columns = None):
     scaler = MinMaxScaler()
     X_scaled = scaler.fit_transform(X_reshaped)
 
-    X_scaled = X_scaled.reshape(num_samples, num_timesteps, num_features) 
-    
+    # Scale based on train set instead NB!!!
+    X_scaled = X_scaled.reshape(num_samples, num_timesteps, num_features)
+
+    df_scaled = pd.DataFrame({
+        "ImageName": df_grouped["ImageName"].first().values,
+        "Region": df_grouped["Region"].first().values,
+        "Features": list(X_scaled),  # Each row contains an array of shape (timesteps, features)
+    })
+
+
+
     # NB: ser ut som om det muligens er noe feil med region 75, nesten null på original_first_order_energy
     # Kan prøve å concatenate time dimensjonen med tsfresh
-    return X_scaled, y
+    #print(X_scaled.shape)
+    return df_scaled

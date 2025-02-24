@@ -44,7 +44,7 @@ def extract_radiomic_features(image_series, mask):
     return radiomic_features
 
 def save_radiomic_features(data_dict):
-    file_reader = FileReader("..\..\..\data") 
+    file_reader = FileReader("../../../../data/") 
     segmentation_data = []
     for path, suffices in data_dict.items():
         data_entry = file_reader.get_image_data(path, suffices) 
@@ -71,4 +71,11 @@ def save_radiomic_features(data_dict):
                 data.append(row)
                 
     df = pd.DataFrame(data)
-    df.to_csv("../../../data/radiomics_features.csv", index=False) 
+    df.to_csv("../../../../data/radiomics_features.csv", index=False) 
+
+data_dict = {
+    "drsbru/post": ["label"],  # Folder: drsbru, Files: *_post.dcm, *_mask.nii.gz
+    "drsprg/post": ["post"]
+}
+
+save_radiomic_features(data_dict=data_dict)

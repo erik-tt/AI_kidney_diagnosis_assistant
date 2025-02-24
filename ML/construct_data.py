@@ -4,14 +4,25 @@ import cv2
 import nibabel as nib
 import numpy as np
 import shutil
+import pandas as pd
 import pydicom
 
 input_dir = "../data/segmentation_masks"
 output_dir = "../data/dataset"
 dynamicrenal = "../data/BAZA dynamicrenal"
+metadata = "../data/metadata.csv"
+
+BASE_DIR = "../data/dataset" 
+
 
 os.makedirs(output_dir, exist_ok=True)
 
+metadata_list = []
+
+def get_relative_path(full_path):
+    """Convert absolute paths to relative paths."""
+    return os.path.relpath(full_path, BASE_DIR)
+    
 def add_dicom_files(base_name, output_path):
     for root, dirs, files in os.walk(dynamicrenal):
                 for filename in files:
@@ -19,7 +30,8 @@ def add_dicom_files(base_name, output_path):
                         file_path = os.path.join(os.path.join(dynamicrenal, os.path.relpath(root, dynamicrenal)), filename)
                         if pydicom.dcmread(file_path).pixel_array.shape[0] > 100:
                             shutil.copy2(file_path, output_path)
-
+                            time_series_path = os.path.join(output_path, filename)  # Save path to metadata
+    return time_series_path
 
 for root, dirs, files in os.walk(input_dir):
     for filename in files:
@@ -63,4 +75,20 @@ for root, dirs, files in os.walk(input_dir):
             nib.save(mask_nii, mask_output_path)
 
             #Get dicom files. Long runtime, but this is only to be done once for setup.
-            add_dicom_files(base_name, output_path)
+            time_series_path = add_dicom_files(base_name, output_path)
+
+            # Save the data paths for easy lookup
+            metadata_list.append({
+                "ImageName": base_name,
+                "ImagePath": get_relative_path(image_output_path),
+                "SegLabelPath": get_relative_path(mask_output_path),
+                "TimeSeriesPath": get_relative_path(time_series_path) if time_series_path else "Not Found",
+            })
+            break
+
+drsbru_labels = pd.read_csv("../data/labels/drsbru.csv")
+drsprg_labels = pd.read_csv("../data/labels/drsprg.csv")
+
+
+df_metadata = pd.DataFrame(metadata_list)
+df_metadata.to_csv(metadata, index=False)

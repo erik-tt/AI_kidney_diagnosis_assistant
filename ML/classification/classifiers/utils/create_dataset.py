@@ -4,6 +4,7 @@ from config.transforms_selector import transforms_selector
 from utils.file_reader import FileReader
 from dataset.SampleDataset import SampleDataset2
 from monai.data import CacheDataset, Dataset
+from feature_extraction.utils import process_df
 
 def create_dataset(transforms_name: str,
                    data_type: str,   
@@ -14,6 +15,9 @@ def create_dataset(transforms_name: str,
     file_reader = FileReader("../../../data", data_type=data_type)
     dataset = file_reader.get_classification_data()
 
+    radiomic_features = process_df("../../../data/radiomics_features.csv", ["../../../data/labels/drsbru.csv", "../../../data/labels/drsprg.csv"], ["original_firstorder_TotalEnergy", "original_firstorder_10Percentile"])
+    print(radiomic_features)
+
     train_data, test_data = train_test_split(
         dataset,
         test_size=test_size,      
@@ -23,7 +27,6 @@ def create_dataset(transforms_name: str,
     train_transforms, val_transforms = transforms_selector(transforms_name)
 
     #train data and test data determinstic
-    
     if data_type == "image":
         train_dataset = Dataset(train_data, train_transforms)
         test_dataset = Dataset(test_data, val_transforms)

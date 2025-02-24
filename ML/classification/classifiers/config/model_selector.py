@@ -13,7 +13,7 @@ class ensembleModel(nn.Module):
     def __init__(self, device, in_channels=1, num_classes=5):
         super(ensembleModel, self).__init__()
         # Resnet18 feature extraction, Pytorch
-        self.backbone = models.resnet152(pretrained=True)
+        self.backbone = models.resnet18(pretrained=True)
 
         # Replace the fully connected (FC) layer with an identity layer
         self.backbone.fc = torch.nn.Identity()  # Removes classification head
@@ -23,11 +23,11 @@ class ensembleModel(nn.Module):
             param.requires_grad = False
         
         self.fc = nn.Sequential(
-            nn.Linear(2048, 2048),
-            nn.InstanceNorm1d(2048), ## Less overfit compared to batch norm
+            nn.Linear(512, 512),
+            nn.InstanceNorm1d(512), ## Less overfit compared to batch norm
             nn.LeakyReLU(negative_slope=0.01, inplace=True),  # LeakyReLUs instead of ReLU
             nn.Dropout(0.5),  # Dropout for regularization
-            nn.Linear(2048, num_classes)  # Output layer
+            nn.Linear(512, num_classes)  # Output layer
         )
 
         self.to(device)

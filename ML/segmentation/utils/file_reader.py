@@ -10,13 +10,14 @@ class FileReader:
         data = []
         path = os.path.join(self.base_dir, "dataset", folder_name)
 
-        
+        print(path)
         patterns = [
             (suffix, re.compile(rf"_{re.escape(suffix)}\.(dcm|nii\.gz)$", re.IGNORECASE))
             for suffix in file_suffixes
         ]
                                        
         for root, _, files in os.walk(path):
+            print(files)
             entry = {}
             for file in files:
                 for suffix, pattern in patterns:

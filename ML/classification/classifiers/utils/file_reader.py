@@ -28,7 +28,7 @@ class FileReader:
 
         data = []
         #Change this when we have a good data structure
-        path = os.path.join(self.base_dir, "dataset/", folder_name)
+        path = os.path.join(self.base_dir, "dataset/drsprg", folder_name)
 
         df = self.get_pd_labels()
 
