@@ -12,14 +12,8 @@ output_dir = "../data/dataset"
 dynamicrenal = "../data/BAZA dynamicrenal"
 metadata = "../data/metadata.csv"
 
-BASE_DIR = "../data/dataset" 
-
-
 os.makedirs(output_dir, exist_ok=True)
 
-
-def get_relative_path(full_path):
-    return os.path.relpath(full_path, BASE_DIR)
     
 def add_dicom_files(base_name, output_path):
     for root, dirs, files in os.walk(dynamicrenal):
