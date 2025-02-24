@@ -7,11 +7,25 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 import os
+import random
+import numpy as np
+import monai
+
+def set_seed(seed: int = 42):
+    """Ensure reproducibility by setting all relevant seeds."""
+    random.seed(seed)  # Python's built-in random
+    np.random.seed(seed)  # NumPy
+    torch.manual_seed(seed)  # PyTorch CPU
+    torch.cuda.manual_seed(seed)  # PyTorch GPU
+    torch.cuda.manual_seed_all(seed)  # Multi-GPU
+    monai.utils.set_determinism(seed=seed)  # MONAI-specific reproducibility
+    torch.backends.cudnn.deterministic = True  # Ensure deterministic algorithms in cuDNN
+    torch.backends.cudnn.benchmark = False  # Disable cuDNN auto-tuning for deterministic behavior
 
 def main(params):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #For reproducability (The answer is 42)
-    torch.manual_seed(42)
+    set_seed()
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs("./runs", exist_ok=True)
