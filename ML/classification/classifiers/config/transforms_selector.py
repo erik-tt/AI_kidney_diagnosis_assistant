@@ -12,17 +12,28 @@ from monai.transforms import (
     EnsureChannelFirstd,
     Pad,
     Transposed,
-    Lambdad
+    Lambdad,
+    RandRotated,
+    RandCoarseDropoutd,
+    RandZoomd
 )
+import numpy as np
+
+import torchvision.transforms as transforms
+
 
 PRE_TRANSFORMS = [
-    LoadImaged(keys=["image"]),
+    LoadImaged(keys=["image"], image_only=True, reader="ITKReader"), # For DICOM?
     EnsureTyped(keys=["image", "label"]),
 ] 
 
+torchvision_normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
 POST_TRANSFORMS = [
-    NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
-    ToTensord(keys=["image", "label"])
+    #NormalizeIntensityd(keys="image"),
+    ToTensord(keys=["image", "label"]),
+    Lambdad(keys="image", func=lambda x: torchvision_normalize(x)) 
+    #NormalizeIntensityd(keys=["image"], subtrahend=[0.485, 0.456, 0.406], divisor=[0.229, 0.224, 0.225], nonzero=True),  # ImageNet normalization
 ]
 
 def transforms_selector(transforms_name :str):
@@ -30,29 +41,42 @@ def transforms_selector(transforms_name :str):
     transforms = []
     if transforms_name == "config_1":
         transforms = [
-            RandFlipd(keys=["image"], spatial_axis=0, prob=0.5),
+            RandFlipd(keys=["image"], spatial_axis=1, prob=0.5),
         ]
 
     if transforms_name == "pretrained":
         transforms = [ 
             #Lambdad(keys=["image"], func=lambda x: print(x.shape)),
+            Resized(keys=["image"], spatial_size=(224, 224)),
             RepeatChanneld(keys=["image"], repeats=3),
-            Resized(keys=["image"], spatial_size=(224, 224))
+            RandFlipd(keys=["image"], spatial_axis=1, prob=0.5),
         ]
 
     if transforms_name == "3dtransforms":
         transforms = [
+            Lambdad(keys=["image"], func=lambda x: x.permute(2,1,0)), #  Depth, Height, Width
+            EnsureChannelFirstd(keys=["image"], channel_dim="no_channel"),
+            #RepeatChanneld(keys=["image"], repeats=3),
+            Resized(keys=["image"], spatial_size=(-1, 224, 224)),
+            RandFlipd(keys=["image"], spatial_axis=2, prob=0.5),
+        ]
+    if transforms_name == "lstm":
+        transforms = [
             #The dicom images does not have a first channel
             EnsureChannelFirstd(keys=["image"], channel_dim="no_channel"),
+            #RepeatChanneld(keys=["image"], repeats=3),
+            #Resized(keys=["image"], spatial_size=(224, 180, 224)),
             #Lambdad function needed to switch dimensions, permute suggested by chat GPT
-            Lambdad(keys=["image"], func=lambda x: x.permute(0,2,1,3)),
+            Lambdad(keys=["image"], func=lambda x: x.permute(3,0,2,1)), # Depth, Channels, Height, Width
+            #Resized(keys=["image"], spatial_size=(180, 224, 224)),
+
             #Resize temporal dimension and image dimension
-            Resized(keys=["image"], spatial_size=(48, 84, 84)),
+            RandFlipd(keys=["image"], spatial_axis=2, prob=0.5), #vertical flip
         ]
 
     train_transforms = PRE_TRANSFORMS + transforms + POST_TRANSFORMS
     val_transforms = []
-
+    
     for transform in train_transforms:
         if not isinstance(transform, Randomizable):
             val_transforms.append(transform)
