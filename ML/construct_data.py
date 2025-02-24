@@ -60,7 +60,6 @@ for root, dirs, files in os.walk(input_dir):
             os.makedirs(output_folder, exist_ok=True)
 
             base_name = os.path.splitext(filename)[0]
-            print(base_name)
             json_path = os.path.join(root, filename)
             output_path = os.path.join(output_folder, base_name)
 
