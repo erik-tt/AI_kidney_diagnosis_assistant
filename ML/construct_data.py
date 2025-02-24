@@ -83,14 +83,17 @@ for root, dirs, files in os.walk(input_dir):
             time_series_path = add_dicom_files(base_name, output_path)
 
             # Extract the patient ID and suffix (post, ant etc...)
-            patient_id = "_".join(base_name.split("_")[:-1])
-            suffix = base_name.split("_")[-1]
+            basename_split = base_name.split("_")
+            database = basename_split[0]
+            patient_id = "_".join(basename_split[:-1])
+            suffix = basename_split[-1]
 
             # Save the data paths for easy lookup
             metadata_list.append({
                 "ImageName": base_name,
                 "PatientID": patient_id,
                 "Suffix": suffix,
+                "Database": database,
                 "ImagePath": get_relative_path(image_output_path),
                 "SegLabelPath": get_relative_path(mask_output_path),
                 "TimeSeriesPath": get_relative_path(time_series_path) if time_series_path else "Not Found",
