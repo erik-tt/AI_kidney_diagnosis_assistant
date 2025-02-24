@@ -94,9 +94,9 @@ for root, dirs, files in os.walk(input_dir):
                 "PatientID": patient_id,
                 "Suffix": suffix,
                 "Database": database,
-                "ImagePath": get_relative_path(image_output_path),
-                "SegLabelPath": get_relative_path(mask_output_path),
-                "TimeSeriesPath": get_relative_path(time_series_path) if time_series_path else "Not Found",
+                "ImagePath": os.path.abspath(image_output_path),
+                "SegLabelPath": os.path.abspath(mask_output_path),
+                "TimeSeriesPath": os.path.abspath(time_series_path) if time_series_path else "Not Found",
             })
 
 drsbru_labels = pd.read_csv("../data/labels/drsbru.csv")
