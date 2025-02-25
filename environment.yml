@@ -9,8 +9,6 @@ dependencies:
   - monai
   - numpy
   - pandas
-  - pytorch
-  - torchvision
   - matplotlib
   - seaborn
   - opencv
@@ -29,3 +27,5 @@ dependencies:
     - labelme
     - SimpleITK
     - pyradiomics
+    - torch
+    - torchvision

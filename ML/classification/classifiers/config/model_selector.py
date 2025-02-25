@@ -269,7 +269,6 @@ def model_selector(model_name :str, device: torch.device):
             num_classes=5,
             pretrained=True
         ).to(device)
-
         return model
     
     elif model_name.lower() == "resnet50":

@@ -1,22 +1,26 @@
 from typing import List
 from sklearn.model_selection import train_test_split
 from config.transforms_selector import transforms_selector
-from utils.file_reader import FileReader
 from dataset.SampleDataset import SampleDataset2
 from monai.data import CacheDataset, Dataset
 from feature_extraction.utils import process_df
+from monai.data import CacheDataset
+from ML.utils.file_reader import get_classification_data
+from ML.classification.classifiers.dataset.ClassificationDataset import ClassificationDataset
+
 
 def create_dataset(transforms_name: str,
-                   data_type: str,   
+                   data_dir: List[str],
+                   data_suffices: List[str],   
+                   start_frame: int,
+                   end_frame: int, 
+                   agg: str,
+                   cache: bool,
                    test_size: int = 0.2, 
                    random_state: int = 42, 
                    shuffle: bool = True):
     
-    file_reader = FileReader("../../../data", data_type=data_type)
-    dataset = file_reader.get_classification_data()
-
-    radiomic_features = process_df("../../../data/radiomics_features.csv", ["../../../data/labels/drsbru.csv", "../../../data/labels/drsprg.csv"], ["original_firstorder_TotalEnergy", "original_firstorder_10Percentile"])
-    print(radiomic_features)
+    dataset = get_classification_data(data_dir, data_suffices)
 
     train_data, test_data = train_test_split(
         dataset,
@@ -25,15 +29,23 @@ def create_dataset(transforms_name: str,
         shuffle=shuffle 
     )
     train_transforms, val_transforms = transforms_selector(transforms_name)
+    
+    # Check if cache fails
+    train_dataset = ClassificationDataset(data_list=train_data, 
+                                            start_frame=start_frame, 
+                                            end_frame=end_frame,
+                                            agg=agg, 
+                                            cache=cache,
+                                            transforms=train_transforms, 
+                                            )
 
-    #train data and test data determinstic
-    if data_type == "image":
-        train_dataset = Dataset(train_data, train_transforms)
-        test_dataset = Dataset(test_data, val_transforms)
-    else:
-        train_dataset = SampleDataset2(train_data, num_frames=20, transforms=train_transforms, agg="mean")
-        test_dataset = SampleDataset2(test_data, num_frames=20, transforms=val_transforms, agg="mean")
-
+    test_dataset = ClassificationDataset(data_list=test_data, 
+                                            start_frame=start_frame, 
+                                            end_frame=end_frame, 
+                                            agg=agg, 
+                                            cache=cache,
+                                            transforms=val_transforms, 
+                                            )
 
     sample = train_dataset[0]["image"]
     print(f"Loaded image shape: {sample.shape}")
