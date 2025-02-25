@@ -5,12 +5,20 @@ from monai.data import Dataset, CacheDataset
 
 class ClassificationDataset():
     def __init__(self, data_list, start_frame: int, end_frame: int, agg: str, cache: bool, transforms=None):
+        
+        valid_agg_options = {"mean", "time_series"}
+        if agg not in valid_agg_options:
+            raise ValueError(f"Invalid agg='{agg}'. Must be one of {valid_agg_options}.")
+        if start_frame < 0:
+            raise ValueError(f"Invalid start_frame={start_frame}: Cannot be negative.")
+        if end_frame is not None and end_frame <= start_frame:
+            raise ValueError(f"Invalid end_frame={end_frame}: Must be greater than start_frame={start_frame}.")
 
         self.start_frame = start_frame
         self.end_frame = end_frame
         self.agg = agg
 
-        if cache:
+        if cache:   
             self.dataset = CacheDataset(data=data_list, transform=transforms)
         else:
             self.dataset = Dataset(data=data_list, transform=transforms)

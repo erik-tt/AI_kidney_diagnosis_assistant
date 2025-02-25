@@ -14,24 +14,25 @@ def main(params):
     torch.manual_seed(42)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    os.makedirs("./runs", exist_ok=True)
     os.makedirs("./classification_models", exist_ok=True)
-    log_dir = os.path.join("./runs", f"experiment_{timestamp}")
-    writer = SummaryWriter(log_dir=log_dir)
 
+    base_log_dir = os.path.abspath("./runs")
+    log_dir = os.path.join(base_log_dir, f"experiment_{timestamp}")
+    os.makedirs(log_dir, exist_ok=True) 
+
+    writer = SummaryWriter(log_dir=log_dir)
     writer.add_text("Model", f"Model: {params.model}", global_step=0)
     writer.add_text("Transforms", f"Transforms: {params.transforms}", global_step=0)
     writer.add_text("Batch size", f"Batch size: {params.batch_size}", global_step=0)
     writer.add_text("Learning rate", f"Learning rate: {params.lr}", global_step=0)
-    # writer.add_text("Datadir", f"Data directories: {params.data}", global_step=0)
 
-    train_dataset, test_dataset = create_dataset(params.transforms, 
-                                                    params.data_dir, 
-                                                    params.data_suffix, 
-                                                    params.start_frame,
-                                                    params.end_frame,
-                                                    params.agg,
-                                                    params.cache)
+    train_dataset, test_dataset = create_dataset(transforms_name=params.transforms, 
+                                                    data_dir=params.data_dir, 
+                                                    data_suffices=params.data_suffix, 
+                                                    start_frame=params.start_frame,
+                                                    end_frame=params.end_frame,
+                                                    agg=params.agg,
+                                                    cache=params.cache)
 
     train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers, collate_fn=pad_list_data_collate)
     val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers, collate_fn=pad_list_data_collate) 
@@ -48,6 +49,8 @@ def main(params):
         epochs_to_save=params.save,
         model_name=params.model
     )
+    
+    writer.close()
 
 if __name__ == "__main__":
     parser = ArgumentParser()
@@ -67,7 +70,7 @@ if __name__ == "__main__":
     parser.add_argument("--start_frame", type=int, default=0)
     parser.add_argument("--end_frame", type=int, default=None)
     parser.add_argument("--cache", type=bool, default=False)
-    parser.add_argument("--agg", default=None)
+    parser.add_argument("--agg", default="mean") # mean or time_series
 
     args = parser.parse_args()
 
