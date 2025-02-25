@@ -1,9 +1,0 @@
-setting:
-  additionalInfo: False  
-featureClass:
-    firstorder: []
-    glcm: []
-    glrlm: []
-    glszm: []
-    ngtdm: []
-    gldm: []
