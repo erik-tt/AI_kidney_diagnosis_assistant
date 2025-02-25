@@ -25,7 +25,13 @@ def main(params):
     writer.add_text("Learning rate", f"Learning rate: {params.lr}", global_step=0)
     # writer.add_text("Datadir", f"Data directories: {params.data}", global_step=0)
 
-    train_dataset, test_dataset = create_dataset(params.transforms, params.data_type)
+    train_dataset, test_dataset = create_dataset(params.transforms, 
+                                                    params.data_dir, 
+                                                    params.data_suffix, 
+                                                    params.start_frame,
+                                                    params.end_frame,
+                                                    params.agg,
+                                                    params.cache)
 
     train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers, collate_fn=pad_list_data_collate)
     val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers, collate_fn=pad_list_data_collate) 
@@ -49,7 +55,8 @@ if __name__ == "__main__":
    # parser.add_argument("--data", nargs='+', default="", help="List of data directories") #Update this when we know dir structure for this data
     parser.add_argument("--model", default="resnet18")
     #image or time_series
-    parser.add_argument("--data_type", default="image")
+    parser.add_argument("--data_dir", nargs='+', default=["drsbru", "drsprg"], help="Allowed data directories")
+    parser.add_argument("--data_suffix", nargs='+', default=["POST"], help="Allowed suffices")
     #Set to config_2 if models have 3 input channels and image is the data-type, for example for pretrained resnet models
     parser.add_argument("--transforms", default="pretrained")
     parser.add_argument("--batch_size", type=int, default=6)
@@ -57,6 +64,10 @@ if __name__ == "__main__":
     parser.add_argument("--num_epochs", type=int, default=10)
     parser.add_argument("--lr", type=int, default=0.001)
     parser.add_argument("--save",type=int, default=2) #TODO:implement save
+    parser.add_argument("--start_frame", type=int, default=0)
+    parser.add_argument("--end_frame", type=int, default=None)
+    parser.add_argument("--cache", type=bool, default=False)
+    parser.add_argument("--agg", default=None)
 
     args = parser.parse_args()
 
