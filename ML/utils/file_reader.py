@@ -39,3 +39,20 @@ def get_classification_data(datasets: Optional[List[str]]=None, suffixes: Option
 
     return metadata_dict
 
+
+def get_radiomic_data(datasets: Optional[List[str]]=None, suffixes: Optional[List[str]]=None):  
+    metadata = pd.read_csv(METADATA_PATH, usecols=["TimeSeriesPath", "SegLabelPath", "Suffix", "Database"])
+    
+    if datasets is not None:
+        metadata = metadata[metadata["Database"].isin(datasets)]
+    
+    if suffixes is not None:
+        metadata = metadata[metadata["Suffix"].isin(suffixes)]
+
+    metadata = metadata[["TimeSeriesPath", "SegLabelPath"]]
+
+    metadata.rename(columns={"TimeSeriesPath": "image", "SegLabelPath": "label"}, inplace=True)
+    metadata_dict = metadata.to_dict(orient="records")
+
+    return metadata_dict
+
