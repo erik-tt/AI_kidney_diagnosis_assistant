@@ -3,11 +3,9 @@ from sklearn.model_selection import train_test_split
 from config.transforms_selector import transforms_selector
 from dataset.SampleDataset import SampleDataset2
 from monai.data import CacheDataset, Dataset
-from feature_extraction.utils import process_df
 from monai.data import CacheDataset
 from ML.utils.file_reader import get_classification_data
 from ML.classification.classifiers.dataset.ClassificationDataset import ClassificationDataset
-
 
 def create_dataset(transforms_name: str,
                    data_dir: List[str],
@@ -20,7 +18,7 @@ def create_dataset(transforms_name: str,
                    random_state: int = 42, 
                    shuffle: bool = True):
     
-    dataset = get_classification_data(data_dir, data_suffices)
+    dataset = get_classification_data(data_dir, data_suffices, radiomics=True)
 
     train_data, test_data = train_test_split(
         dataset,
@@ -28,6 +26,7 @@ def create_dataset(transforms_name: str,
         random_state=random_state,     
         shuffle=shuffle 
     )
+
     train_transforms, val_transforms = transforms_selector(transforms_name)
     
     # Check if cache fails
@@ -36,7 +35,7 @@ def create_dataset(transforms_name: str,
                                             end_frame=end_frame,
                                             agg=agg, 
                                             cache=cache,
-                                            transforms=train_transforms, 
+                                            transforms=train_transforms
                                             )
 
     test_dataset = ClassificationDataset(data_list=test_data, 
