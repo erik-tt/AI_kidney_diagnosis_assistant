@@ -9,6 +9,7 @@ dependencies:
   - monai
   - numpy
   - pandas
+  - pingouin
   - matplotlib
   - seaborn
   - statsmodels
