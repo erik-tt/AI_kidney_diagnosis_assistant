@@ -9,6 +9,7 @@ from datetime import datetime
 import random
 import numpy as np
 import os
+from torchinfo import summary
 
 def main(params):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -37,6 +38,9 @@ def main(params):
     writer.add_text("Datadir", f"Data directories: {params.data}", global_step=0)
 
     model = model_selector(params.model, device)
+    
+    summary(model, input_size=(4, 1, 128, 128), verbose = 1, depth=40)
+    
     
     if params.k_fold:
         data = create_dataset_kfold(params.data)
@@ -73,13 +77,13 @@ if __name__ == "__main__":
 
     parser.add_argument("--data", nargs='+', default=["drsprg/post", "drsbru/post"], help="List of data directories")
     parser.add_argument("--transforms", default="baseline")
-    parser.add_argument("--model", default="unetr")
+    parser.add_argument("--model", default="baseline")
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--num_epochs", type=int, default=50)
     parser.add_argument("--lr", type=int, default=0.001)
     parser.add_argument("--save",type=int, default=2)
-    parser.add_argument("--k_fold",type=int, default=10)
+    parser.add_argument("--k_fold",type=int)
     args = parser.parse_args()
 
     main(args)
