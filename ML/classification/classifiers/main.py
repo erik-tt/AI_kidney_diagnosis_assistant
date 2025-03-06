@@ -1,5 +1,7 @@
 from argparse import ArgumentParser
+import random
 from monai.data import DataLoader, pad_list_data_collate
+import numpy as np
 from train_loops.train import train_loop
 from config.model_selector import model_selector
 from utils.create_dataset import create_dataset
@@ -12,6 +14,12 @@ def main(params):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #For reproducability (The answer is 42)
     torch.manual_seed(42)
+    np.random.seed(42)
+    random.seed(42)
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs("./runs", exist_ok=True)
@@ -31,6 +39,7 @@ def main(params):
     val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers, collate_fn=pad_list_data_collate) 
 
     model = model_selector(params.model, device)
+    for name, _ in model.named_modules(): print(name)
 
     train_loop(
         model=model,
@@ -54,9 +63,9 @@ if __name__ == "__main__":
     parser.add_argument("--transforms", default="pretrained")
     parser.add_argument("--batch_size", type=int, default=6)
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--num_epochs", type=int, default=10)
+    parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--lr", type=int, default=0.001)
-    parser.add_argument("--save",type=int, default=2) #TODO:implement save
+    parser.add_argument("--save",type=int, default=1) #TODO:implement save
 
     args = parser.parse_args()
 
