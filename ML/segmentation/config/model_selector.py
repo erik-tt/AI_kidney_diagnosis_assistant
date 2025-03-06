@@ -41,7 +41,7 @@ def model_selector(model_name :str, device: torch.device):
             channels=(64,128,256, 512, 1024),
             strides=(2, 2, 2, 2),
             dropout=0.0,
-            num_res_units=3
+            num_res_units=1
         ).to(device)
     
     elif model_name.lower() == "attentionunet":
