@@ -1,28 +1,19 @@
-from .file_reader import FileReader
 from typing import List
 from sklearn.model_selection import train_test_split
 from monai.data import CacheDataset
 from config.transforms_selector import transforms_selector
 from torch.utils.tensorboard import SummaryWriter
+from ML.utils.file_reader import get_segmentation_data
 
-def get_data_paths(paths: List[str]):
-
-    file_reader = FileReader("../../data")
-    dataset = []
-    for path in paths:
-        segmentation_data = file_reader.get_segmentation_file_paths(path)
-        dataset.extend(segmentation_data)
-    
-    return dataset
-
-def create_dataset(paths: List[str],
+def create_dataset(datadirs: List[str],
+                   suffices: List[str],
                    transforms_name: str,   
                    test_size: int = 0.2, 
                    random_state: int = 42, 
                    shuffle: bool = True
                    ):
     
-    dataset = get_data_paths(paths)
+    dataset = get_segmentation_data(datadirs, suffices)
 
     train_data, test_data = train_test_split(
         dataset,
@@ -40,10 +31,9 @@ def create_dataset(paths: List[str],
     return train_dataset, test_dataset
 
 
-def create_dataset_kfold(paths: List[str],):
+def create_dataset_kfold(datadirs: List[str],
+                         suffices: List[str]):
     
-    data = get_data_paths(paths)
+    return get_segmentation_data(datadirs, suffices)
     
-    return data
-
 

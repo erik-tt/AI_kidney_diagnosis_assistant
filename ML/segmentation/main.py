@@ -33,12 +33,13 @@ def main(params):
     writer.add_text("Transforms", f"Transforms: {params.transforms}", global_step=0)
     writer.add_text("Batch size", f"Batch size: {params.batch_size}", global_step=0)
     writer.add_text("Learning rate", f"Learning rate: {params.lr}", global_step=0)
-    writer.add_text("Datadir", f"Data directories: {params.data}", global_step=0)
+    writer.add_text("Datadir", f"Data directories: {params.data_dir}", global_step=0)
+    writer.add_text("Data suffix", f"Data directories: {params.data_suffix}", global_step=0)
 
     model = model_selector(params.model, device)
     
     if params.k_fold:
-        data = create_dataset_kfold(params.data)
+        data = create_dataset_kfold(params.data_dir, params.data_suffix)
         k_fold_validation(model_name=params.model,
                       dataset=data, 
                       epochs=params.num_epochs, 
@@ -50,7 +51,7 @@ def main(params):
                       splits=params.k_fold)
     
     else:
-        train_dataset, test_dataset = create_dataset(params.data, params.transforms)
+        train_dataset, test_dataset = create_dataset(params.data_dir, params.data_suffix, params.transforms)
 
         train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers)
         val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers) 
@@ -70,7 +71,8 @@ def main(params):
 if __name__ == "__main__":
     parser = ArgumentParser()
 
-    parser.add_argument("--data", nargs='+', default=["drsprg/post", "drsbru/post"], help="List of data directories")
+    parser.add_argument("--data_dir", nargs='+', default=["drsprg", "drsbru"], help="Allowed data directories")
+    parser.add_argument("--data_suffix", nargs='+', default=["POST"], help="Allowed suffices")
     parser.add_argument("--transforms", default="config_1")
     parser.add_argument("--model", default="UNet")
     parser.add_argument("--batch_size", type=int, default=4)
