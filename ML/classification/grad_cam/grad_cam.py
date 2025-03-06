@@ -15,9 +15,6 @@ from monai.transforms import (
 import numpy as np
 import torch
 
-dirname = os.path.dirname(__file__)
-filename = os.path.join(dirname, 'relative/path/to/file/you/want')
-
 
 def use_grad_CAMpp(model_path:str, inference_image_path:str, transforms:str, post_transforms:str):
 

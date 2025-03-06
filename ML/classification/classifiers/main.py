@@ -46,7 +46,6 @@ def main(params):
     val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers, collate_fn=pad_list_data_collate) 
 
     model = model_selector(params.model, device)
-    for name, _ in model.named_modules(): print(name)
 
     train_loop(
         model=model,
