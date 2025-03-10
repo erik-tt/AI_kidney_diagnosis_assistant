@@ -61,7 +61,9 @@ def train(model,
         images, labels = batch_data["image"].to(device), batch_data["label"].to(device) 
         optimizer.zero_grad()
         outputs = model(images)
-
+        #Unet++ returns a list and not a tensor
+        if (isinstance(outputs, list)):
+             outputs = torch.Tensor(outputs[-1])
         loss = loss_function(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -107,6 +109,8 @@ def validate(model,
                 images, labels = batch["image"].to(device), batch["label"].to(device)
 
                 outputs = model(images)
+                if (isinstance(outputs, list)):
+                    outputs = torch.Tensor(outputs[-1])
 
                 loss = loss_function(outputs, labels)
                 validation_losses.append(loss.item())
@@ -228,7 +232,7 @@ def k_fold_validation(model_name,
         loss_function = DiceCELoss(include_background=False, to_onehot_y=True, softmax=True)
         optimizer = torch.optim.Adam(model.parameters())
 
-        print(f"Fold {fold+1}/{splits}")
+        print(f"Iteration {fold+1}/{splits}")
 
         train_set = [dataset[i] for i in train_idx]
         val_set = [dataset[i] for i in val_idx]
