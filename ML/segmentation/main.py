@@ -79,8 +79,8 @@ if __name__ == "__main__":
 
     parser.add_argument("--data_dir", nargs='+', default=["drsprg", "drsbru"], help="Allowed data directories")
     parser.add_argument("--data_suffix", nargs='+', default=["POST"], help="Allowed suffices")
-    parser.add_argument("--transforms", default="unet")
-    parser.add_argument("--model", default="baseline")
+    parser.add_argument("--transforms", default="baseline")
+    parser.add_argument("--model", default="unet")
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--num_epochs", type=int, default=50)
