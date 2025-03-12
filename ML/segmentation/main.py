@@ -24,6 +24,14 @@ def main(params):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+    #Randomness in data loader
+    g = torch.Generator()
+    g.manual_seed(42)
+
+    def seed_worker(worker_id):
+        worker_seed = torch.initial_seed() % 2**32
+        np.random.seed(worker_seed)
+        random.seed(worker_seed)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs("./runs", exist_ok=True)
@@ -58,8 +66,8 @@ def main(params):
     else:
         train_dataset, test_dataset = create_dataset(params.data_dir, params.data_suffix, params.transforms)
 
-        train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers)
-        val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers) 
+        train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers, worker_init_fn=seed_worker(), generator=g)
+        val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False) 
 
         train_loop(
             model=model,
