@@ -13,6 +13,8 @@ dependencies:
   - matplotlib
   - seaborn
   - statsmodels
+  - scipy
+  - scikit-posthocs
   - opencv
   - tqdm
   - imageio
