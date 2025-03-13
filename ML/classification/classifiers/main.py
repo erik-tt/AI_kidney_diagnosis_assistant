@@ -9,6 +9,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 import os
+import monai
 
 def main(params):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -18,6 +19,7 @@ def main(params):
     random.seed(42)
     torch.cuda.manual_seed(42)
     torch.cuda.manual_seed_all(42)
+    monai.utils.set_determinism(42) 
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
