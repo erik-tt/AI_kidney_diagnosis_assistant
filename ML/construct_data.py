@@ -36,7 +36,7 @@ def cleanup_excess_files(output_path):
     for item in os.listdir(output_path):
         item_path = os.path.join(output_path, item)
         try:
-            if (os.path.isfile(item_path) or os.path.islink(item_path)) and not item_path.endswith(".nii.gz"):
+            if (os.path.isfile(item_path) or os.path.islink(item_path)) and not item_path.endswith(".nii.gz") not item_path.endswith(".npz"):
                 os.remove(item_path)
             elif os.path.isdir(item_path):
                 shutil.rmtree(item_path)
