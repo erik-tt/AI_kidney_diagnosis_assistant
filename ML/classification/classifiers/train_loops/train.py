@@ -332,10 +332,7 @@ def k_fold_validation(model_name,
             X_val = scaler.transform(X_val)
 
             if epoch % 2 != 0:
-                ica = FastICA(n_components=50, random_state=42)  # You choose # components
-                X_train = ica.fit_transform(X_train)
-                X_val = ica.fit(X_val)
-                print(X_train.shape)
+
 
                 #lda = LinearDiscriminantAnalysis(n_components=4)  # k ≤ C - 1
                 #X_train = lda.fit_transform(X_train, y_train)  # X: features, y: class labels
@@ -393,12 +390,17 @@ def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
 
     print(combined_idx.shape)
 
-    print(X_train.shape)
-    #X_train = X_train[:, combined_idx]
-    #X_val = X_val[:, combined_idx]
+    X_train = X_train[:, combined_idx]
+    X_val = X_val[:, combined_idx]
 
-    X_selected = X_train
+    print(X_train.shape)
+    print(X_val.shape)
     X_val_selected = X_val
+
+
+    pca = PCA(n_components=0.99, random_state=42)  # You choose # components
+    X_train = pca.fit_transform(X_train)
+    X_val = pca.transform(X_val)
 
     #X_train_base, X_blend, y_train_base, y_blend = train_test_split(X_train, y_train, test_size=0.2, stratify=y_train)
 
@@ -524,16 +526,16 @@ def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
     ensemble_logreg.fit(X_train, y_train)
     ensemble_svm_l1.fit(X_train, y_train)
 
-    y_pred = ensemble_svm.predict(X_val_selected)
+    y_pred = ensemble_svm.predict(X_val)
     accuracy_ens_svm = accuracy_score(y_val, y_pred)
 
-    y_pred = ensemble_knn.predict(X_val_selected)
+    y_pred = ensemble_knn.predict(X_val)
     accuracy_ens_knn = accuracy_score(y_val, y_pred)
 
-    y_pred = ensemble_logreg.predict(X_val_selected)
+    y_pred = ensemble_logreg.predict(X_val)
     accuracy_ens_logreg = accuracy_score(y_val, y_pred)
 
-    y_pred = ensemble_logreg.predict(X_val_selected)
+    y_pred = ensemble_logreg.predict(X_val)
     accuracy_ens_svm_l1 = accuracy_score(y_val, y_pred)
 
     rf_model = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10)
@@ -542,8 +544,8 @@ def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
     rf_validation_accuracy = accuracy_score(y_val, y_pred)
 
     rf_model2 = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10, max_features="sqrt")
-    rf_model2.fit(X_selected, y_train)
-    y_pred = rf_model2.predict(X_val_selected)
+    rf_model2.fit(X_train, y_train)
+    y_pred = rf_model2.predict(X_val)
     rf_validation_accuracy2 = accuracy_score(y_val, y_pred)
 
     
@@ -556,22 +558,6 @@ def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
 
     rf_validation_accuracy3 = accuracy_score(y_val, final_predictions)
 
-
-    selector = SelectKBest(score_func=f_classif, k=200)  # pick top 20 features
-    X_selected = selector.fit_transform(X_train, y_train)
-    X_val_selected = selector.transform(X_val)
-
-    svm_model = SVC()
-    svm_model.fit(X_selected, y_train)
-    y_pred = svm_model.predict(X_val_selected)
-
-    svm_validation_accuracy = accuracy_score(y_val, y_pred)
-
-    svm_model = SVC(kernel="linear")
-    svm_model.fit(X_train, y_train)
-    y_pred = svm_model.predict(X_val)
-
-    print(f"SVM ACCURACY NO SELECT: {accuracy_score(y_val, y_pred)}")
     et_model = ExtraTreesClassifier(n_estimators=100, random_state=42)
     et_model.fit(X_train, y_train)
     y_pred = et_model.predict(X_val)
@@ -579,21 +565,21 @@ def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
     et_accuracy = accuracy_score(y_val, y_pred)
 
     knn_model = KNeighborsClassifier(n_neighbors=5)
-    knn_model.fit(X_selected, y_train)
-    y_pred = knn_model.predict(X_val_selected)
+    knn_model.fit(X_train, y_train)
+    y_pred = knn_model.predict(X_val)
 
     accuracy = accuracy_score(y_val, y_pred)
     print(f"📊 KNN Accuracy: {accuracy:.4f}")
 
     logreg_model = LogisticRegression(solver='lbfgs', max_iter=1000) # use elasticnet penalty
-    logreg_model.fit(X_selected, y_train)
-    y_pred = logreg_model.predict(X_val_selected)
+    logreg_model.fit(X_train, y_train)
+    y_pred = logreg_model.predict(X_val)
 
     accuracy = accuracy_score(y_val, y_pred)
 
 
-    xgb.fit(X_selected, y_train)
-    y_pred = xgb.predict(X_val_selected)
+    xgb.fit(X_train, y_train)
+    y_pred = xgb.predict(X_val)
 
     accuracy_xgb = accuracy_score(y_val, y_pred)
 
@@ -605,6 +591,11 @@ def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
     lgbm.fit(X_train, y_train)
     y_pred = lgbm.predict(X_val)
     accuracy_lightgbm = accuracy_score(y_val, y_pred)
+
+    svm = SVC(kernel='linear', C=1.0, random_state=42)
+    svm.fit(X_train, y_train)
+    y_pred = svm.predict(X_val)
+    svm_validation_accuracy = accuracy_score(y_val, y_pred)
 
     print(f"📊 LogReg Accuracy: {accuracy:.4f}")
     print(f"📊 XGB Accuracy: {accuracy_xgb:.4f}")
