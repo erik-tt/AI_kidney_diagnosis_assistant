@@ -413,34 +413,34 @@ def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
 
     lgbm = LGBMClassifier(
         objective='multiclass',
-        num_class=5,                  # Replace with your number of classes
-        learning_rate=0.03,           # Start small, helps generalization
-        n_estimators=200,             # Can tune with early stopping
-        max_depth=3,                  # Keep trees shallow for small data
-        num_leaves=15,                # Should be ≤ 2^max_depth
-        subsample=0.8,                # Row sampling
-        colsample_bytree=0.6,         # Feature sampling (good with CNN features)
-        reg_alpha=0.1,                # L1 regularization
-        reg_lambda=1.0,               # L2 regularization
+        num_class=5,                  
+        learning_rate=0.03,           
+        n_estimators=200,             
+        max_depth=3,                  
+        num_leaves=15,                
+        subsample=0.8,                
+        colsample_bytree=0.6,         
+        reg_alpha=0.1,                
+        reg_lambda=1.0,               
         random_state=42,
         verbosity=-1
     )
 
     ensemble_knn = BaggingClassifier(
         estimator=knn_model,
-        n_estimators=100,              # Number of weak learners
-        max_samples=0.67,              # % of training instances per model (rows)
-        max_features=0.1,             # % of features per model (columns)
-        bootstrap=True,               # Sample rows with replacement
-        bootstrap_features=True,      # Sample features with replacement
+        n_estimators=100,              
+        max_samples=0.67,              
+        max_features=0.1,             
+        bootstrap=True,               
+        bootstrap_features=True,      
         random_state=42,
-        n_jobs=-1                     # Parallel training
+        n_jobs=-1                     
     )
 
     ensemble_svm_l1 = BaggingClassifier(
         estimator=svm_model_l1,
-        n_estimators=100,              # Number of weak learners
-        max_samples=0.67,              # % of training instances per model (rows)
+        n_estimators=100,             
+        max_samples=0.67,             )
         max_features=0.1,             # % of features per model (columns)
         bootstrap=True,               # Sample rows with replacement
         bootstrap_features=True,      # Sample features with replacement
@@ -450,24 +450,24 @@ def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
 
     ensemble_svm = BaggingClassifier(
         estimator=svm_model,
-        n_estimators=100,              # Number of weak learners
-        max_samples=0.67,              # % of training instances per model (rows)
-        max_features=0.1,             # % of features per model (columns)
-        bootstrap=True,               # Sample rows with replacement
-        bootstrap_features=True,      # Sample features with replacement
+        n_estimators=100,             
+        max_samples=0.67,             
+        max_features=0.1,             
+        bootstrap=True,               
+        bootstrap_features=True,      
         random_state=42,
-        n_jobs=-1                     # Parallel training
+        n_jobs=-1                    
     )
 
     ensemble_logreg = BaggingClassifier(
         estimator=logreg_model,
-        n_estimators=100,              # Number of weak learners
-        max_samples=0.67,              # % of training instances per model (rows)
-        max_features=0.1,             # % of features per model (columns)
-        bootstrap=True,               # Sample rows with replacement
-        bootstrap_features=True,      # Sample features with replacement
+        n_estimators=100,              
+        max_samples=0.67,              
+        max_features=0.1,             
+        bootstrap=True,               
+        bootstrap_features=True,      
         random_state=42,
-        n_jobs=-1                     # Parallel training
+        n_jobs=-1                     
     )
     rf_model2 = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10, max_features="sqrt")
     et_model = ExtraTreesClassifier(n_estimators=100, random_state=42)
