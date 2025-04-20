@@ -25,6 +25,7 @@ dependencies:
   - pip
   - tensorboard
   - einops
+  - imbalanced-learn
   - pip:
     - labelme
     - SimpleITK
@@ -32,3 +33,4 @@ dependencies:
     - torch
     - torchvision
     - xgboost
+    - lightgbm

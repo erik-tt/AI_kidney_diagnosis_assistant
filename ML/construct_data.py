@@ -36,7 +36,7 @@ def cleanup_excess_files(output_path):
     for item in os.listdir(output_path):
         item_path = os.path.join(output_path, item)
         try:
-            if (os.path.isfile(item_path) or os.path.islink(item_path)) and not item_path.endswith(".nii.gz") not item_path.endswith(".npz"):
+            if (os.path.isfile(item_path) or os.path.islink(item_path)) and not item_path.endswith(".nii.gz") and not item_path.endswith(".npz"):
                 os.remove(item_path)
             elif os.path.isdir(item_path):
                 shutil.rmtree(item_path)
@@ -97,6 +97,7 @@ drsprg_labels = pd.read_csv("../data/labels/drsprg.csv")
 
 df_labels = pd.concat([drsbru_labels[["STUDY NAME", "CKD"]], drsprg_labels[["STUDY NAME", "CKD"]]], ignore_index=True)  # Resets index
 #df_labels["CKD"] = df_labels["CKD"] - 1 # 0 index CKD
+df_labels["STUDY NAME"] = df_labels["STUDY NAME"].str.strip()
 
 df_metadata = pd.DataFrame(metadata_list)
 df_metadata = pd.merge(df_metadata, df_labels, how="left", left_on="PatientID", right_on="STUDY NAME")
