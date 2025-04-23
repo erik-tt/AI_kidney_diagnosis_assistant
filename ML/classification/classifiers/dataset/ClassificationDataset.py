@@ -103,7 +103,7 @@ class ClassificationDataset(Dataset):
 
         sigma = 0.5  # Standard deviation, adjust as needed
         noisy_label = np.float32(np.random.normal(loc=float(label), scale=sigma))
-
+        
         total_frames = image.shape[1]
 
         end_frame = self.end_frame if self.end_frame is not None else total_frames
@@ -119,9 +119,3 @@ class ClassificationDataset(Dataset):
     
     def get_objects(self):
         return self.scaler, self.imputer, self.top_indices, self.nan_cols
-    
-    def set_agg(self, agg: str):
-        valid_agg_options = {"mean", "time_series"}
-        if agg not in valid_agg_options:
-            raise ValueError(f"Invalid agg='{agg}'. Must be one of {valid_agg_options}.")
-        self.agg = agg

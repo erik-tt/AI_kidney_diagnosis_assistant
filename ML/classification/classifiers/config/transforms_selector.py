@@ -93,6 +93,8 @@ def transforms_selector(transforms_name :str):
     if transforms_name == "pretrained":
         transforms = [ 
             RepeatChanneld(keys=["image"], repeats=3),
+            Lambdad(keys=["image"], func=lambda x: x.permute(0,3,2,1)), # USIKKER PÅ LAMBDAFUNCTION, ER LITT RAR
+            Resized(keys=["image"], spatial_size=[-1, 224, 224]), 
             #Resized(keys=["image"], spatial_size=[120, -1, -1]), 
             #RandFlipd(keys=["image"], spatial_axis=2, prob=0.5),
             #ScaleIntensityd(keys=["image"], minv=0.0, maxv=1.0), 

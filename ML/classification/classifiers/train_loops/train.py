@@ -93,10 +93,9 @@ def train(model,
         X_train.append(features.detach().cpu().numpy())  # Convert tensor to numpy and store
         y_train.append(labels.cpu().numpy())
 
-    X_train = np.concatenate(X_train, axis=0)
     y_train = np.concatenate(y_train, axis=0)
 
-    training_accuracy.append(correct / total) # SKAL PÅ INNSIDEN
+    training_accuracy.append(correct / total) # SKAL PÅ INNSIDEN?
 
     return np.mean(training_losses), np.mean(training_accuracy), X_train, y_train
 
@@ -116,7 +115,11 @@ def validate(model, loss_function, val_dataloader, device, optimizer, epoch, epo
                 
                 labels = labels - 1
 
-                outputs, features = model(images)
+                outputs = model(images)
+                if isinstance(outputs, tuple):
+                    outputs, features = outputs
+                else:
+                    features = None
 
                 loss = loss_function(outputs, labels)
                 validation_losses.append(loss.item())
@@ -145,14 +148,10 @@ def validate(model, loss_function, val_dataloader, device, optimizer, epoch, epo
         #        'loss': loss
         #        },f"classification_models/checkpoint_{model_name}.pth")
     
-                X_val.append(features.detach().cpu().numpy())  # Convert tensor to numpy and store
-                y_val.append(labels.cpu().numpy())
-
-    X_val = np.concatenate(X_val, axis=0)
-    y_val = np.concatenate(y_val, axis=0)
+               
 
     validation_accuracy.append(correct / total)
-    return np.mean(validation_losses), np.mean(validation_accuracy), X_val, y_val, validation_predictions
+    return np.mean(validation_losses), np.mean(validation_accuracy), validation_predictions
 
 def train_loop(model, 
                epochs: int, 
@@ -192,7 +191,10 @@ def train_model(model, dataloader, optimizer, loss_function, device):
         images, labels, noisy_label = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.float32)
         optimizer.zero_grad()
         labels = labels - 1
-        outputs, features = model(images)
+        outputs = model(images)
+        if isinstance(outputs, tuple):
+            outputs, features = outputs
+
         loss = loss_function(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -211,14 +213,14 @@ def k_fold_validation(model_name,
     skf = StratifiedKFold(n_splits=splits, shuffle=True, random_state=42)
 
     train_transforms, val_transforms = transforms_selector(transforms_name)
-
+    train_transforms_baseline, val_transforms_baseline = transforms_selector("pretrained")
+    
     all_train_loss = np.zeros((splits, epochs))
     all_val_loss = np.zeros((splits, epochs))
     all_train_accuracy = np.zeros((splits, epochs))
     all_val_accuracy = np.zeros((splits, epochs))
 
     labels = np.array([sample["label"] for sample in dataset])
-    print(len(labels))
     rf_acc_per_epoch = defaultdict(list)
     rf_acc_per_epoch2 = defaultdict(list)
     rf_acc_per_epoch3 = defaultdict(list)
@@ -273,9 +275,31 @@ def k_fold_validation(model_name,
                                             train=False
                                             )
 
+        train_ds_baseline = ClassificationDataset(data_list=train_set, 
+                                            start_frame=6, 
+                                            end_frame=18,
+                                            agg="mean", 
+                                            cache=False,
+                                            transforms=train_transforms_baseline,
+                                            radiomics=False,
+                                            train=True
+                                            )
+        
+        val_ds_baseline = ClassificationDataset(data_list=val_set, 
+                                            start_frame=6, 
+                                            end_frame=18,
+                                            agg="mean", 
+                                            cache=False,
+                                            transforms=val_transforms_baseline,
+                                            radiomics=False,
+                                            train=False
+                                            )
+
         train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers) # SHUFFLE
         feature_dataloader = DataLoader(feature_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
         val_dataloader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        train_dataloader_baseline = DataLoader(train_ds_baseline, batch_size=batch_size, shuffle=False, num_workers=num_workers) # SHUFFLE
+        val_dataloader_baseline = DataLoader(val_ds_baseline, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
         for epoch in range(epochs):
             print("-" * 10)
@@ -287,7 +311,6 @@ def k_fold_validation(model_name,
             if epoch != epochs - 1:
                 # TRAIN 3D CNN
                 # TIME_SERIES FOR 3D CNN
-                train_ds.set_agg("time_series")
                 for param in model.backbone.layer4.parameters(): 
                     param.requires_grad = True
                 for param in model.backbone.layer3.parameters():  
@@ -297,10 +320,14 @@ def k_fold_validation(model_name,
 
                 # TRAIN BASELINE
                 # MEAN FOR 2D CNN
-                #train_ds.set_agg("mean")
-                #train_model(model_baseline, train_dataloader, optimizer_baseline, loss_function, device)
+                train_model(model_baseline, train_dataloader_baseline, optimizer_baseline, loss_function, device) # PASSE PÅ RIKTIG SHAPE, TRENGER IKKE TRENES LIK EPOCHS 
             else:
                 # EVAL
+
+                ## EVAL BASELINE
+                _, accuracy_baseline, _ = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)
+
+                ## EVAL MODELS
                 model.eval()
                 model.backbone.eval()
                 for param in model.backbone.parameters():
@@ -319,7 +346,7 @@ def k_fold_validation(model_name,
                     correct = 0
                     for batch in tqdm(val_dataloader):
                         img, label, noisy_label = batch["image"].to(device), batch["label"].to(device), batch["noisy_label"].to(device, dtype=torch.long)
-                        output, features = model(img)
+                        outputs, features = model(img)
 
                         # FOR NEURAL NETWORK PREDS
                         _, predicted = torch.max(outputs.data, 1)
@@ -344,6 +371,7 @@ def k_fold_validation(model_name,
                 X_val = scaler.transform(X_val)
 
                 rf_validation_accuracy, svm_validation_accuracy = train_models(X_train, y_train, X_val, y_val)
+                print(accuracy_baseline)
                 print(neural_network_acc)
                 print(rf_validation_accuracy)
                 print(svm_validation_accuracy)
