@@ -96,7 +96,7 @@ def train(model,
     X_train = np.concatenate(X_train, axis=0)
     y_train = np.concatenate(y_train, axis=0)
 
-    training_accuracy.append(correct / total)
+    training_accuracy.append(correct / total) # SKAL PÅ INNSIDEN
 
     return np.mean(training_losses), np.mean(training_accuracy), X_train, y_train
 
@@ -152,7 +152,7 @@ def validate(model, loss_function, val_dataloader, device, optimizer, epoch, epo
     y_val = np.concatenate(y_val, axis=0)
 
     validation_accuracy.append(correct / total)
-    return np.mean(validation_losses), np.mean(validation_accuracy), X_val, y_val
+    return np.mean(validation_losses), np.mean(validation_accuracy), X_val, y_val, validation_predictions
 
 def train_loop(model, 
                epochs: int, 
@@ -223,6 +223,7 @@ def k_fold_validation(model_name,
         loss_function = torch.nn.MSELoss() # CAN USE LABEL SMOOTHING 
         #optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=0.01) # With regularization
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001) ## ADAM W
+        optimizer_baseline = torch.optim.Adam(model.parameters(), lr=0.001)
 
         print(f"Fold {fold+1}/{splits}")
 
@@ -258,95 +259,86 @@ def k_fold_validation(model_name,
                                             radiomics=False,
                                             train=False
                                             )
-        print(len(train_ds.data_list))
-        print(len(val_ds.data_list))
 
         train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers) # SHUFFLE
         feature_dataloader = DataLoader(feature_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
         val_dataloader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
         for epoch in range(epochs):
             print("-" * 10)
             print(f"epoch {epoch + 1}/{epochs}")
-            #training_loss, training_accuracy, X_train, y_train = train(model, loss_function, train_dataloader, device, optimizer)
-            
-            #validation_loss, validation_accuracy, X_val, y_val = validate(model, loss_function, val_dataloader, device, optimizer, epoch)
 
-
-            #all_train_loss[fold, epoch] = training_loss
-            #all_val_loss[fold, epoch] = validation_loss
-            #all_train_accuracy[fold, epoch] = training_accuracy
-            #all_val_accuracy[fold, epoch] = validation_accuracy
             X_train, y_train = [], []
-            if epoch % 2 != 0:
-                print("EVAL")
+            X_val, y_val = [], []
+
+            if epoch != epochs - 1:
+                # TRAIN
+                dl = train_dataloader
+                for param in model.backbone.layer4.parameters(): 
+                    param.requires_grad = True
+                for param in model.backbone.layer3.parameters():  
+                    param.requires_grad = True
+                model.train()
+                model.backbone.train()
+                
+                for batch in tqdm(dl):
+                    images, labels, noisy_label = batch["image"].to(device), batch["label"].to(device, dtype=torch.float32), batch["noisy_label"].to(device, dtype=torch.float32)
+                    optimizer.zero_grad()
+                    labels = labels - 1
+                    outputs, features = model(images)
+                    loss = loss_function(outputs, labels)
+                    loss.backward()
+                    optimizer.step()
+            else:
+                # EVAL
                 dl = feature_dataloader
                 model.eval()
                 model.backbone.eval()
                 for param in model.backbone.parameters():
                     param.requires_grad = False
-            else:
-                print("TRAIN")
-                dl = train_dataloader
-                for param in model.backbone.layer4.parameters():  # Unfreezing Layer4 (ResNet-50/34)
-                    param.requires_grad = True
-                for param in model.backbone.layer3.parameters():  # Unfreezing Layer4 (ResNet-50/34)
-                    param.requires_grad = True
-                model.train()
-                model.backbone.train()
+                with torch.no_grad():
+                    # TRAIN FEATURES
+                    for batch in tqdm(dl):
+                        images, labels, noisy_label = batch["image"].to(device), batch["label"].to(device, dtype=torch.float32), batch["noisy_label"].to(device, dtype=torch.float32)
+                        labels = labels - 1
+                        outputs, features = model(images)
+                        X_train.append(features.detach().cpu().numpy())
+                        y_train.append(labels.cpu().numpy())  
+                    
+                    #VAL FEATURES
+                    total = 0
+                    correct = 0
+                    for batch in tqdm(val_dataloader):
+                        img, label, noisy_label = batch["image"].to(device), batch["label"].to(device), batch["noisy_label"].to(device, dtype=torch.float32)
+                        output, features = model(img)
 
-            for batch in tqdm(dl):
-                images, labels, noisy_label = batch["image"].to(device), batch["label"].to(device, dtype=torch.float32), batch["noisy_label"].to(device, dtype=torch.float32)
-                optimizer.zero_grad()
-                labels = labels - 1
-                noisy_label = noisy_label - 1
-                outputs, features = model(images)
-                if epoch % 2 == 0:
-                    loss = loss_function(outputs, labels)
+                        # FOR NEURAL NETWORK PREDS
+                        _, predicted = torch.max(outputs.data, 1)
+                        total += labels.size(0)
+                        correct += (predicted == labels).sum().item()
 
-                    loss.backward()
-                    optimizer.step()
-                X_train.append(features.detach().cpu().numpy())  # Shape: (batch_size, 180, 512)
-                y_train.append(labels.cpu().numpy())  # Store labels too if needed
+                        label = label - 1 
+                        X_val.append(features.detach().cpu().numpy())  
+                        y_val.append(label.cpu().numpy())  
+                
+                neural_network_acc = correct / total
 
-            X_val, y_val = [], []
-            model.eval() ## FJERN
-            model.backbone.eval()
-            with torch.no_grad():
-                for batch in tqdm(val_dataloader):
-                    img, label, noisy_label = batch["image"].to(device), batch["label"].to(device), batch["noisy_label"].to(device, dtype=torch.float32)
-                    output, features = model(img)
-                    label = label - 1 
-                    X_val.append(features.detach().cpu().numpy())  # Shape: (batch_size, 180, 512)
-                    y_val.append(label.cpu().numpy())  # Store labels too if needed
+                X_train = np.concatenate(X_train, axis=0)  
+                y_train = np.concatenate(y_train, axis=0) 
 
-            X_train = np.concatenate(X_train, axis=0)  # Final shape: (total_samples, 180, 512)
-            y_train = np.concatenate(y_train, axis=0)  # Shape: (total_samples,)
+                X_val = np.concatenate(X_val, axis=0)  
+                y_val = np.concatenate(y_val, axis=0) 
 
-            X_val = np.concatenate(X_val, axis=0)  # Final shape: (total_samples, 180, 512)
-            y_val = np.concatenate(y_val, axis=0)  # Shape: (total_samples,)
+                scaler = StandardScaler()
 
+                X_train = scaler.fit_transform(X_train)
+                X_val = scaler.transform(X_val)
 
-            scaler = StandardScaler()
+                rf_validation_accuracy, svm_validation_accuracy = train_models(X_train, y_train, X_val, y_val)
+                print(neural_network_acc)
+                print(rf_validation_accuracy)
+                print(svm_validation_accuracy)
 
-            X_train = scaler.fit_transform(X_train)
-            X_val = scaler.transform(X_val)
-
-            if epoch % 2 != 0:
-
-
-                #lda = LinearDiscriminantAnalysis(n_components=4)  # k ≤ C - 1
-                #X_train = lda.fit_transform(X_train, y_train)  # X: features, y: class labels
-                #X_val = lda.transform(X_val)
-
-                rf_acc, rf_acc2, rf_acc3 = train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch)
-
-                rf_acc_per_epoch[epoch].append(rf_acc)
-                rf_acc_per_epoch2[epoch].append(rf_acc2)
-                rf_acc_per_epoch3[epoch].append(rf_acc3)
-            #writer.add_scalar(f"Training Accuracy/Fold {fold+1}", training_accuracy, epoch)
-            #writer.add_scalar(f"Validation Accuracy/Fold {fold+1}", validation_accuracy, epoch)
-            #writer.add_scalar(f"Training Loss/Fold {fold+1}", training_loss, epoch)
-            #writer.add_scalar(f"Validation Loss/Fold {fold+1}", validation_loss, epoch)
 
     for epoch in sorted(rf_acc_per_epoch.keys()):
         mean_acc = np.mean(rf_acc_per_epoch[epoch])
@@ -366,6 +358,22 @@ def k_fold_validation(model_name,
         #writer.add_scalar("Avg Validation Accuracy Across Folds", avg_val_accuracy[epoch], epoch)
                                             
     writer.flush()
+
+def train_models(X_train, y_train, X_val, y_val):
+
+    rf_model = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10)
+    rf_model.fit(X_train, y_train)
+    y_pred = rf_model.predict(X_val)
+    rf_validation_accuracy = accuracy_score(y_val, y_pred)
+
+    svm = SVC(kernel='linear', C=1.0, random_state=42)
+    svm.fit(X_train, y_train)
+    y_pred = svm.predict(X_val)
+    svm_validation_accuracy = accuracy_score(y_val, y_pred)
+
+    return rf_validation_accuracy, svm_validation_accuracy
+
+
 
 def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
 
@@ -401,8 +409,6 @@ def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
     pca = PCA(n_components=0.99, random_state=42)  # You choose # components
     X_train = pca.fit_transform(X_train)
     X_val = pca.transform(X_val)
-
-    #X_train_base, X_blend, y_train_base, y_blend = train_test_split(X_train, y_train, test_size=0.2, stratify=y_train)
 
 
     svm_model = SVC(kernel="linear", C=0.1) # value of C?
@@ -440,7 +446,7 @@ def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
     ensemble_svm_l1 = BaggingClassifier(
         estimator=svm_model_l1,
         n_estimators=100,             
-        max_samples=0.67,             )
+        max_samples=0.67,             
         max_features=0.1,             # % of features per model (columns)
         bootstrap=True,               # Sample rows with replacement
         bootstrap_features=True,      # Sample features with replacement
