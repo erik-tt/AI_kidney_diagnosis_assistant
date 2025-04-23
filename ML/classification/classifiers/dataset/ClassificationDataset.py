@@ -7,8 +7,6 @@ import numpy as np
 from sklearn.impute import SimpleImputer
 import pydicom
 
-
-
 class ClassificationDataset(Dataset):
     def __init__(self, data_list, start_frame: int, end_frame: int, agg: str, cache: bool, radiomics: bool, train: bool, transforms=None):
         
@@ -121,3 +119,9 @@ class ClassificationDataset(Dataset):
     
     def get_objects(self):
         return self.scaler, self.imputer, self.top_indices, self.nan_cols
+    
+    def set_agg(self, agg: str):
+        valid_agg_options = {"mean", "time_series"}
+        if agg not in valid_agg_options:
+            raise ValueError(f"Invalid agg='{agg}'. Must be one of {valid_agg_options}.")
+        self.agg = agg

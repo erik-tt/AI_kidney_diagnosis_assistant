@@ -43,7 +43,7 @@ class CNNWeakModel(nn.Module):
         #for param in self.backbone.layer3.parameters():  # Unfreezing Layer4 (ResNet-50/34)
         #    param.requires_grad = True
         self.fc = nn.Sequential(
-            nn.Linear(3072, 1),
+            nn.Linear(3072, num_classes),
             #nn.ReLU(),
             #nn.Linear(128, 1)
         )

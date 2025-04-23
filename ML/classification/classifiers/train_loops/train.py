@@ -186,6 +186,17 @@ def train_loop(model,
     
     writer.flush()
 
+def train_model(model, dataloader, optimizer, loss_function, device):
+    model.train()
+    for batch in tqdm(dataloader):
+        images, labels, noisy_label = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.float32)
+        optimizer.zero_grad()
+        labels = labels - 1
+        outputs, features = model(images)
+        loss = loss_function(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
 def k_fold_validation(model_name,
                       dataset, 
                       epochs:int, 
@@ -220,7 +231,9 @@ def k_fold_validation(model_name,
         val_accuracy = []
         #Need to reinitalize the model every time
         model = model_selector(model_name, device)
-        loss_function = torch.nn.MSELoss() # CAN USE LABEL SMOOTHING 
+        model_baseline = model_selector("resnet18", device)
+
+        loss_function = torch.nn.CrossEntropyLoss() # CAN USE LABEL SMOOTHING 
         #optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=0.01) # With regularization
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001) ## ADAM W
         optimizer_baseline = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -272,34 +285,30 @@ def k_fold_validation(model_name,
             X_val, y_val = [], []
 
             if epoch != epochs - 1:
-                # TRAIN
-                dl = train_dataloader
+                # TRAIN 3D CNN
+                # TIME_SERIES FOR 3D CNN
+                train_ds.set_agg("time_series")
                 for param in model.backbone.layer4.parameters(): 
                     param.requires_grad = True
                 for param in model.backbone.layer3.parameters():  
                     param.requires_grad = True
-                model.train()
                 model.backbone.train()
-                
-                for batch in tqdm(dl):
-                    images, labels, noisy_label = batch["image"].to(device), batch["label"].to(device, dtype=torch.float32), batch["noisy_label"].to(device, dtype=torch.float32)
-                    optimizer.zero_grad()
-                    labels = labels - 1
-                    outputs, features = model(images)
-                    loss = loss_function(outputs, labels)
-                    loss.backward()
-                    optimizer.step()
+                train_model(model, train_dataloader, optimizer, loss_function, device)
+
+                # TRAIN BASELINE
+                # MEAN FOR 2D CNN
+                #train_ds.set_agg("mean")
+                #train_model(model_baseline, train_dataloader, optimizer_baseline, loss_function, device)
             else:
                 # EVAL
-                dl = feature_dataloader
                 model.eval()
                 model.backbone.eval()
                 for param in model.backbone.parameters():
                     param.requires_grad = False
                 with torch.no_grad():
                     # TRAIN FEATURES
-                    for batch in tqdm(dl):
-                        images, labels, noisy_label = batch["image"].to(device), batch["label"].to(device, dtype=torch.float32), batch["noisy_label"].to(device, dtype=torch.float32)
+                    for batch in tqdm(feature_dataloader):
+                        images, labels, noisy_label = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.float32)
                         labels = labels - 1
                         outputs, features = model(images)
                         X_train.append(features.detach().cpu().numpy())
@@ -309,7 +318,7 @@ def k_fold_validation(model_name,
                     total = 0
                     correct = 0
                     for batch in tqdm(val_dataloader):
-                        img, label, noisy_label = batch["image"].to(device), batch["label"].to(device), batch["noisy_label"].to(device, dtype=torch.float32)
+                        img, label, noisy_label = batch["image"].to(device), batch["label"].to(device), batch["noisy_label"].to(device, dtype=torch.long)
                         output, features = model(img)
 
                         # FOR NEURAL NETWORK PREDS
