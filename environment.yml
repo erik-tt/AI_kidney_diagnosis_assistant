@@ -4,10 +4,10 @@ channels:
   - conda-forge
   - anaconda
 dependencies:
-  - python=3.9
-  - scikit-learn
-  - monai
-  - numpy
+  - python=3.9.21
+  - scikit-learn=1.6.1
+  - monai=1.4.0
+  - numpy=1.26.4
   - pandas
   - pingouin
   - matplotlib
@@ -16,21 +16,21 @@ dependencies:
   - opencv
   - tqdm
   - imageio
-  - nibabel
+  - nibabel=5.3.2
   - pydicom
   - pillow
   - jupyter
   - jupyterlab
   - ipython
   - pip
-  - tensorboard
+  - tensorboard=2.17.0
   - einops
   - imbalanced-learn
   - pip:
-    - labelme
+    - labelme==5.6.1
     - SimpleITK
     - pyradiomics
-    - torch
-    - torchvision
+    - torch=2.6.0
+    - torchvision==0.21.0
     - xgboost
     - lightgbm
