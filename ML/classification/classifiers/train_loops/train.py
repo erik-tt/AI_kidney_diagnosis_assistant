@@ -37,6 +37,11 @@ from sklearn.decomposition import PCA, FastICA
 
 
 
+from sklearn.feature_selection import SelectKBest, f_classif, RFE, SelectFromModel
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+import numpy as np
 
 
 def plot_confusion_matrix(true_labels, predicted_labels, epoch):
@@ -320,12 +325,12 @@ def k_fold_validation(model_name,
 
                 # TRAIN BASELINE
                 # MEAN FOR 2D CNN
-                train_model(model_baseline, train_dataloader_baseline, optimizer_baseline, loss_function, device) # PASSE PÅ RIKTIG SHAPE, TRENGER IKKE TRENES LIK EPOCHS 
+                #train_model(model_baseline, train_dataloader_baseline, optimizer_baseline, loss_function, device) # PASSE PÅ RIKTIG SHAPE, TRENGER IKKE TRENES LIK EPOCHS 
             else:
                 # EVAL
 
                 ## EVAL BASELINE
-                _, accuracy_baseline, _ = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)
+                #_, accuracy_baseline, _ = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)
 
                 ## EVAL MODELS
                 model.eval()
@@ -346,14 +351,14 @@ def k_fold_validation(model_name,
                     correct = 0
                     for batch in tqdm(val_dataloader):
                         img, label, noisy_label = batch["image"].to(device), batch["label"].to(device), batch["noisy_label"].to(device, dtype=torch.long)
+                        label = label - 1
                         outputs, features = model(img)
 
                         # FOR NEURAL NETWORK PREDS
                         _, predicted = torch.max(outputs.data, 1)
-                        total += labels.size(0)
-                        correct += (predicted == labels).sum().item()
+                        total += label.size(0)
+                        correct += (predicted == label).sum().item()
 
-                        label = label - 1 
                         X_val.append(features.detach().cpu().numpy())  
                         y_val.append(label.cpu().numpy())  
                 
@@ -371,10 +376,12 @@ def k_fold_validation(model_name,
                 X_val = scaler.transform(X_val)
 
                 rf_validation_accuracy, svm_validation_accuracy = train_models(X_train, y_train, X_val, y_val)
-                print(accuracy_baseline)
+
+                #print(accuracy_baseline)
                 print(neural_network_acc)
                 print(rf_validation_accuracy)
                 print(svm_validation_accuracy)
+
 
 
     for epoch in sorted(rf_acc_per_epoch.keys()):
@@ -408,6 +415,17 @@ def train_models(X_train, y_train, X_val, y_val):
     y_pred = svm.predict(X_val)
     svm_validation_accuracy = accuracy_score(y_val, y_pred)
 
+    ensemble_svm = BaggingClassifier(
+        estimator=svm,
+        n_estimators=10,             
+        max_samples=0.67,             
+        max_features=0.1,             
+        bootstrap=True,               
+        bootstrap_features=True,      
+        random_state=42,
+        n_jobs=-1                    
+    )
+
     return rf_validation_accuracy, svm_validation_accuracy
 
 
@@ -415,28 +433,7 @@ def train_models(X_train, y_train, X_val, y_val):
 def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
 
 
-    skb = SelectKBest(f_classif, k=300).fit(X_train, y_train)
-
-    # Method B: SelectFromModel
-    sfm = SelectFromModel(RandomForestClassifier(max_depth=4)).fit(X_train, y_train)
     
-    # Method C: RFE
-    rfe = RFE(SVC(kernel='linear'), n_features_to_select=100).fit(X_train, y_train)
-
-    mask_a = skb.get_support()
-    mask_b = sfm.get_support()
-    mask_c = rfe.get_support()
-
-    idx_a = np.where(mask_a)[0]
-    idx_b = np.where(mask_b)[0]
-    idx_c = np.where(mask_c)[0]
-    
-    combined_idx = np.unique(np.concatenate([idx_a, idx_b, idx_c]))
-
-    print(combined_idx.shape)
-
-    X_train = X_train[:, combined_idx]
-    X_val = X_val[:, combined_idx]
 
     print(X_train.shape)
     print(X_val.shape)
