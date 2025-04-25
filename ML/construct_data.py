@@ -18,7 +18,7 @@ os.makedirs(output_dir, exist_ok=True)
 def add_dicom_files(base_name, output_path):
     for root, dirs, files in os.walk(dynamicrenal):
                 for filename in files:
-                    if (base_name in filename) and filename.endswith(".dcm"):
+                    if (base_name in filename) and filename.endswith(".dcm") and ("POST2" not in filename):
                         file_path = os.path.join(os.path.join(dynamicrenal, os.path.relpath(root, dynamicrenal)), filename)
                         if pydicom.dcmread(file_path).pixel_array.shape[0] > 100:
                             shutil.copy2(file_path, output_path)
