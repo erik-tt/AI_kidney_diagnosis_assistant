@@ -38,14 +38,15 @@ from sklearn.metrics import accuracy_score
 import numpy as np
 
 
-def plot_confusion_matrix(true_labels, predicted_labels, epoch):
+def plot_confusion_matrix(true_labels, predicted_labels, predictor):
     CKD_stages = np.arange(1,6)
     conf_matrix = confusion_matrix(true_labels, predicted_labels)
     fig = plt.figure(figsize=(10, 7))
     sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", cbar=False, xticklabels=CKD_stages, yticklabels=CKD_stages)
     plt.xlabel("Predicted")
     plt.ylabel("True")
-    plt.title(f"Confusion Matrix for validation set epoch {epoch}")
+    plt.title(f"Confusion Matrix for validation set using {predictor}")
+    plt.show()
     
     return fig
         
@@ -211,6 +212,13 @@ def k_fold_validation(model_name,
     
     skf = StratifiedKFold(n_splits=splits, shuffle=True, random_state=42)
 
+    nn_conf_matr_labels = []
+    nn_conf_matr_pred = []
+    rf_conf_matr_labels = []
+    rf_conf_matr_pred = []
+    svm_conf_matr_labels = []
+    svm_conf_matr_pred = []
+
     train_transforms, val_transforms = transforms_selector(transforms_name)
     train_transforms_baseline, val_transforms_baseline = transforms_selector("pretrained")
     
@@ -244,10 +252,10 @@ def k_fold_validation(model_name,
         train_set = [dataset[i] for i in train_idx]
         val_set = [dataset[i] for i in val_idx]
         
-        train_ds = ClassificationDataset(data_list=train_set, 
-                                            start_frame=0, 
+        train_ds = ClassificationDataset(data_list=train_set,
+                                            start_frame=0,
                                             end_frame=None,
-                                            agg="time_series", 
+                                            agg="time_series",
                                             cache=False,
                                             transforms=train_transforms,
                                             radiomics=False,
@@ -350,6 +358,9 @@ def k_fold_validation(model_name,
 
                         # FOR NEURAL NETWORK PREDS
                         _, predicted = torch.max(outputs.data, 1)
+                        nn_conf_matr_pred.extend(predicted.tolist())
+                        nn_conf_matr_labels.extend(label.tolist())
+
                         total += label.size(0)
                         correct += (predicted == label).sum().item()
 
@@ -369,45 +380,48 @@ def k_fold_validation(model_name,
                 X_train = scaler.fit_transform(X_train)
                 X_val = scaler.transform(X_val)
 
-                rf_validation_accuracy, svm_validation_accuracy = train_models(X_train, y_train, X_val, y_val)
+                rf_validation_accuracy, rf_pred, svm_validation_accuracy, svm_pred = train_models(X_train, y_train, X_val, y_val)
+
+                rf_conf_matr_labels.extend(y_val)
+                rf_conf_matr_pred.extend(rf_pred)
+
+                svm_conf_matr_labels.extend(y_val)
+                svm_conf_matr_pred.extend(svm_pred)
 
                 #print(accuracy_baseline)
-                print(neural_network_acc)
-                print(rf_validation_accuracy)
-                print(svm_validation_accuracy)
+                print(f"NN acc: {neural_network_acc}")
+                print(f"RF acc: {rf_validation_accuracy}")
+                print(f"SVM acc: {svm_validation_accuracy}")
 
+    #Report all labels and predictions across folds
+    print(f"NN validation labels across all folds: {nn_conf_matr_labels}")
+    print(f"NN validation predictions across all folds: {nn_conf_matr_pred}")
+    print("\n")
+    print(f"RF validation labels across all folds: {nn_conf_matr_labels}")
+    print(f"RF validation predictions across all folds: {nn_conf_matr_pred}")
+    print("\n")
+    print(f"SVM validation labels across all folds: {nn_conf_matr_labels}")
+    print(f"SVM validation predictions across all folds: {nn_conf_matr_pred}")
 
+    #Plot confusion matrixs
+    plot_confusion_matrix(nn_conf_matr_labels, nn_conf_matr_pred, "3D CNN + NN classifier")
+    plot_confusion_matrix(rf_conf_matr_labels, rf_conf_matr_pred, "3D CNN + RF classifier")
+    plot_confusion_matrix(svm_conf_matr_labels, svm_conf_matr_pred, "3D CNN + SVM classifier")
 
-    for epoch in sorted(rf_acc_per_epoch.keys()):
-        mean_acc = np.mean(rf_acc_per_epoch[epoch])
-        print(f"Epoch {epoch} Mean ACC: {mean_acc:.4f}")
-    
-    for epoch in sorted(rf_acc_per_epoch2.keys()):
-        mean_acc = np.mean(rf_acc_per_epoch2[epoch])
-        print(f"Epoch {epoch} Mean ACC: {mean_acc:.4f}")
-    
-    for epoch in sorted(rf_acc_per_epoch3.keys()):
-        mean_acc = np.mean(rf_acc_per_epoch3[epoch])
-        print(f"Epoch {epoch} Mean ACC: {mean_acc:.4f}")
+                
 
-        #writer.add_scalar("Avg Training Loss Across Folds", avg_train_loss[epoch], epoch)
-        #writer.add_scalar("Avg Validation Loss Across Folds", avg_val_loss[epoch], epoch)
-        #writer.add_scalar("Avg Training Accuracy Across Folds", avg_train_accuracy[epoch], epoch)
-        #writer.add_scalar("Avg Validation Accuracy Across Folds", avg_val_accuracy[epoch], epoch)
-                                            
-    writer.flush()
 
 def train_models(X_train, y_train, X_val, y_val):
 
     rf_model = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10)
     rf_model.fit(X_train, y_train)
-    y_pred = rf_model.predict(X_val)
-    rf_validation_accuracy = accuracy_score(y_val, y_pred)
+    y_pred_rf = rf_model.predict(X_val)
+    rf_validation_accuracy = accuracy_score(y_val, y_pred_rf)
 
     svm = SVC(kernel='linear', C=1.0, random_state=42)
     svm.fit(X_train, y_train)
-    y_pred = svm.predict(X_val)
-    svm_validation_accuracy = accuracy_score(y_val, y_pred)
+    y_pred_svm = svm.predict(X_val)
+    svm_validation_accuracy = accuracy_score(y_val, y_pred_svm)
 
     ensemble_svm = BaggingClassifier(
         estimator=svm,
@@ -420,14 +434,12 @@ def train_models(X_train, y_train, X_val, y_val):
         n_jobs=-1                    
     )
 
-    return rf_validation_accuracy, svm_validation_accuracy
+    return rf_validation_accuracy, y_pred_rf, svm_validation_accuracy, y_pred_svm
 
 
 
 def train_weak(X_train, y_train, X_val, y_val, fold, writer, epoch):
 
-
-    
 
     print(X_train.shape)
     print(X_val.shape)
@@ -738,7 +750,7 @@ def custom_bagging_random_subspace(X_train, y_train, X_test, n_models=10, sample
     #for i in range(n_models):
         
     # Train n_estimators models
-    for i in range(n_estimators):
+    for i in range(n_models):
         # Generate a bootstrap sample from the features
         bootstrap_indices = np.random.choice(len(X_train), len(X_train), replace=True)
         X_bootstrap = X_train[bootstrap_indices]

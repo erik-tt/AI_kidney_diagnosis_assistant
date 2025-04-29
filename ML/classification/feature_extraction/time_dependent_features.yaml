@@ -2,8 +2,8 @@ setting:
   additionalInfo: False  
 featureClass:
     firstorder: []
-    glcm: []
-    glrlm: []
-    glszm: []
-    ngtdm: []
-    gldm: []
+    glcm: ["Autocorrelation", ]
+    #glrlm: []
+    #glszm: []
+    #ngtdm: []
+    #gldm: []

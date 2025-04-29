@@ -23,7 +23,7 @@ def extract_radiomic_features(image_series, mask, save_path):
 
     time_extractor = RadiomicsFeatureExtractor()
     time_extractor.loadParams("./time_dependent_features.yaml")
-
+    
     static_extractor = RadiomicsFeatureExtractor()
     static_extractor.loadParams("./time_independent_features.yaml")
 
@@ -63,7 +63,7 @@ def extract_radiomic_features(image_series, mask, save_path):
 
     for t in range(image_array.shape[0]):
         image_slice = sitk.GetImageFromArray(image_array[t])
-
+        
         for region in np.unique(mask_array):
             if region == 0:
                 continue ## kan kanskje ha med background?
@@ -80,6 +80,7 @@ def extract_radiomic_features(image_series, mask, save_path):
             time_extractor.settings['label'] = region
             time_results = time_extractor.execute(image_slice, mask)
 
+
             #if time_feature_names is None:
             #    time_feature_names = list(time_results.keys())
 
@@ -87,7 +88,7 @@ def extract_radiomic_features(image_series, mask, save_path):
             time_features_all.append([save_path, t] + feature_values)
             if t >=6 and t <= 18:
                 time_features_select.append([save_path, t-6] + feature_values)
-    
+        
     time_select_names = ["time_select_" + name for name in names]
     time_all_names = ["time_all_" + name for name in names]
 
@@ -107,9 +108,6 @@ def save_radiomic_features(metadata):
     mean_select_features = []
     all_static_features = []
 
-    metadata = metadata[metadata["Database"] == "drsbru"]
-
-    metadata = metadata.iloc[60:]
 
     for index, row in tqdm(metadata.iterrows(), total=len(metadata)):
         image = row["TimeSeriesPath"]
@@ -138,19 +136,19 @@ def save_radiomic_features(metadata):
     mean_select_features_df = mean_select_features_df.set_index("id")
     static_features_df = static_features_df.set_index("id")
 
-    extracted_features_all = extract_features(time_features_all_df, column_id="id", column_sort="timestep", default_fc_parameters=ComprehensiveFCParameters())
-    extracted_features_select = extract_features(time_features_select_df, column_id="id", column_sort="timestep", default_fc_parameters=ComprehensiveFCParameters())
+    extracted_features_all = extract_features(time_features_all_df, column_id="id", column_sort="timestep", default_fc_parameters=MinimalFCParameters())
+    #extracted_features_select = extract_features(time_features_select_df, column_id="id", column_sort="timestep", default_fc_parameters=MinimalFCParameters())
+    extracted_features_all.index = extracted_features_all.index.get_level_values(0)
 
     all_features = pd.concat([
-        static_features_df, 
+        #static_features_df, 
         extracted_features_all, 
-        extracted_features_select, 
-        mean_all_features_df, 
-        mean_select_features_df
+        #extracted_features_select, 
+        #mean_all_features_df, 
+        #mean_select_features_df
     ], axis=1)
 
     feature_names = all_features.columns
-
     for index, row in all_features.iterrows():
         file_path = row.name   
         metadata_id = os.path.basename(os.path.dirname(file_path))
@@ -164,8 +162,10 @@ def save_radiomic_features(metadata):
 
         metadata.loc[metadata["ImageName"] == metadata_id, "RadiomicFeaturePath"] = file_path
 
-    #metadata.to_csv("../../../data/metadata.csv", index=False)
+    metadata.to_csv("../../../data/metadata.csv", index=False)
 
-metadata = pd.read_csv("../../../data/metadata.csv") # Fix dette i pipeline
-save_radiomic_features(metadata)
+if __name__ == "__main__":
+    metadata = pd.read_csv("../../../data/metadata.csv")  
+    save_radiomic_features(metadata)
 
+## NB DETTE ER FRA GROUND TRUTH SEGMENTATION LABELS
