@@ -70,7 +70,7 @@ def transforms_selector(transforms_name :str):
             NormalizeIntensityd(keys=["image"], channel_wise=True, nonzero=True),  # Per-channel normalization
             #SpatialPadd(keys=["image"], spatial_size=(128, 128, 180)),
             #Resized(keys="image", spatial_size=(224, 224, -1)),
-            RandFlipd(keys="image", spatial_axis=0, prob=0.5),
+            RandFlipd(keys="image", spatial_axis=2, prob=0.5),
             #RandCoarseDropoutd( #decent
             #    keys=["image"], 
             #    holes=5,  # Number of cutout regions
