@@ -35,3 +35,4 @@ dependencies:
     - lightgbm
     - pyradiomics
     - opencv-python
+    - huggingface_hub
