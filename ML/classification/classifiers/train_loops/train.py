@@ -7,7 +7,6 @@ from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 from sklearn.linear_model import LogisticRegression
-import xgboost as xgb
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, StackingClassifier, VotingClassifier
 from sklearn.svm import SVC, LinearSVC
 from sklearn.metrics import classification_report, accuracy_score
@@ -20,18 +19,13 @@ from sklearn.preprocessing import StandardScaler
 from collections import defaultdict
 from sklearn.neighbors import KNeighborsClassifier
 import pandas as pd
-import lightgbm as lgb
-from autogluon.tabular import TabularPredictor
 from sklearn.ensemble import BaggingClassifier, BaggingRegressor
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVR  # instead of SVC
 from sklearn.feature_selection import SelectKBest, f_classif
-from imblearn.over_sampling import SMOTE
 from sklearn.feature_selection import SelectFromModel, RFE
 from sklearn.naive_bayes import GaussianNB
-from xgboost import XGBClassifier
-from lightgbm import LGBMClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.decomposition import PCA, FastICA
 

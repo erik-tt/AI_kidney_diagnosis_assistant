@@ -69,7 +69,7 @@ PRE_TRANSFORMS = [
     #NormalizeIntensityd(keys="image"),
     
     # LITT USIKKER PÅ DENNE
-    # PRØV EGET DATASET, KOMMER ANN PÅ OM MAN SKAL FINETUNE
+    # PRØV EGET DATASET, KOMMER ANN PÅ OM MAN SKAL FINETUNE 
     NormalizeIntensityd(
        keys=["image"],
        subtrahend=IMAGENET_MEAN,  # Mean subtraction (per channel)

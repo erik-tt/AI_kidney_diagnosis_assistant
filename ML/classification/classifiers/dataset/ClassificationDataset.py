@@ -115,7 +115,7 @@ class ClassificationDataset(Dataset):
         image = image.mean(dim=1, keepdim=False) if self.agg == "mean" else image
         if not self.radiomics:
             scaled_features = torch.tensor([])
-        return {"image": image, "label": label, "noisy_label": noisy_label}
+        return {"image": image, "label": label, "noisy_label": noisy_label, "radiomics": radiomics}
     
     def get_objects(self):
         return self.scaler, self.imputer, self.top_indices, self.nan_cols
