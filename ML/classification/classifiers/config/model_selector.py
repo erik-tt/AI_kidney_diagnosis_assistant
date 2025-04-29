@@ -55,7 +55,9 @@ class CNNWeakModel(nn.Module):
         # x is average image'
         batch_size = images.shape[0]
         #https://www.kaggle.com/code/kanncaa1/long-short-term-memory-with-pytorch
-        images = images.permute(0,1,3,4,2) #Correct?
+        images = images.permute(0,1,3,2,4)
+
+        
         #images = self.temporal_pool(images)
         features = self.backbone(images)
         features = features[-1]
