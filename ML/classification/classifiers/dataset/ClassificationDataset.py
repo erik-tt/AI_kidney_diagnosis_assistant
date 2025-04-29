@@ -47,9 +47,10 @@ class ClassificationDataset(Dataset):
             all_labels = []
 
             for entry in data_list:
+
                 radiomics_path = entry["radiomics"]
                 label = entry["label"]
-                radiomic_data = np.load(radiomics_path)
+                radiomic_data = np.load(radiomics_path, allow_pickle=True)
                 
                 features = radiomic_data["feature_values"]
 
@@ -88,7 +89,7 @@ class ClassificationDataset(Dataset):
         image = sample["image"]
         label = sample["label"]
         if self.radiomics:
-            radiomics = np.load(sample["radiomics"])
+            radiomics = np.load(sample["radiomics"], allow_pickle=True)
             feature_values = radiomics["feature_values"]
 
             feature_values[np.isinf(feature_values)] = np.nan
@@ -115,7 +116,7 @@ class ClassificationDataset(Dataset):
         image = image.mean(dim=1, keepdim=False) if self.agg == "mean" else image
         if not self.radiomics:
             scaled_features = torch.tensor([])
-        return {"image": image, "label": label, "noisy_label": noisy_label, "radiomics": radiomics}
+        return {"image": image, "label": label, "noisy_label": noisy_label, "radiomics": scaled_features}
     
     def get_objects(self):
         return self.scaler, self.imputer, self.top_indices, self.nan_cols

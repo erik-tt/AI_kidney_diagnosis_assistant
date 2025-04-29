@@ -258,7 +258,7 @@ def k_fold_validation(model_name,
                                             agg="time_series",
                                             cache=False,
                                             transforms=train_transforms,
-                                            radiomics=False,
+                                            radiomics=True,
                                             train=True
                                             )
     
@@ -268,7 +268,7 @@ def k_fold_validation(model_name,
                                             agg="time_series", 
                                             cache=False,
                                             transforms=val_transforms,
-                                            radiomics=False,
+                                            radiomics=True,
                                             train=True
                                             )
 
@@ -278,7 +278,7 @@ def k_fold_validation(model_name,
                                             agg="time_series", 
                                             cache=None,
                                             transforms=val_transforms, 
-                                            radiomics=False,
+                                            radiomics=True,
                                             train=False
                                             )
 
@@ -301,6 +301,8 @@ def k_fold_validation(model_name,
                                             radiomics=False,
                                             train=False
                                             )
+        
+        val_ds.scaler, val_ds.imputer, val_ds.top_indices, val_ds.nan_cols = train_ds.get_objects()
 
         train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers) # SHUFFLE
         feature_dataloader = DataLoader(feature_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
@@ -342,17 +344,22 @@ def k_fold_validation(model_name,
                 with torch.no_grad():
                     # TRAIN FEATURES
                     for batch in tqdm(feature_dataloader):
-                        images, labels, noisy_label = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.float32)
+                        images, labels, noisy_label, radiomics = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.float32), batch["radiomics"]
                         labels = labels - 1
                         outputs, features = model(images)
-                        X_train.append(features.detach().cpu().numpy())
+
+                        features = features.detach().cpu().numpy() 
+                        radiomics = radiomics.detach().cpu().numpy() if torch.is_tensor(radiomics) else radiomics 
+                        combined_features = np.concatenate([features, radiomics], axis=1)  
+
+                        X_train.append(combined_features)
                         y_train.append(labels.cpu().numpy())  
                     
                     #VAL FEATURES
                     total = 0
                     correct = 0
                     for batch in tqdm(val_dataloader):
-                        img, label, noisy_label = batch["image"].to(device), batch["label"].to(device), batch["noisy_label"].to(device, dtype=torch.long)
+                        img, label, noisy_label, radiomics = batch["image"].to(device), batch["label"].to(device), batch["noisy_label"].to(device, dtype=torch.long), batch["radiomics"]
                         label = label - 1
                         outputs, features = model(img)
 
@@ -364,7 +371,11 @@ def k_fold_validation(model_name,
                         total += label.size(0)
                         correct += (predicted == label).sum().item()
 
-                        X_val.append(features.detach().cpu().numpy())  
+                        features = features.detach().cpu().numpy() 
+                        radiomics = radiomics.detach().cpu().numpy() if torch.is_tensor(radiomics) else radiomics 
+                        combined_features = np.concatenate([features, radiomics], axis=1)  
+
+                        X_val.append(combined_features)  
                         y_val.append(label.cpu().numpy())  
                 
                 neural_network_acc = correct / total
@@ -377,8 +388,10 @@ def k_fold_validation(model_name,
 
                 scaler = StandardScaler()
 
-                X_train = scaler.fit_transform(X_train)
+                X_train = scaler.fit_transform(X_train) # SCALER radiomics to ganger nå
                 X_val = scaler.transform(X_val)
+
+                print(X_train.shape)
 
                 rf_validation_accuracy, rf_pred, svm_validation_accuracy, svm_pred = train_models(X_train, y_train, X_val, y_val)
 
