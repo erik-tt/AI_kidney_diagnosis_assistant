@@ -15,7 +15,7 @@ logger.setLevel(logging.ERROR)
 
 def extract_radiomic_features(image_series, mask, save_path):
     image = sitk.ReadImage(image_series)  
-    mask = sitk.ReadImage(mask)  
+    mask = sitk.ReadImage(mask) 
 
     image_array = sitk.GetArrayFromImage(image)  
     mask_array = sitk.GetArrayFromImage(mask) 
@@ -69,7 +69,8 @@ def extract_radiomic_features(image_series, mask, save_path):
                 continue ## kan kanskje ha med background?
             
             if t == 0:
-                static_extractor.settings['label'] = region
+                static_extractor.settings['label'] = int(region)
+
                 static_results = static_extractor.execute(image_slice, mask)
 
                 static_feature_names = list(static_results.keys())
@@ -77,7 +78,7 @@ def extract_radiomic_features(image_series, mask, save_path):
                 static_features.append([save_path] + static_values)
 
 
-            time_extractor.settings['label'] = region
+            time_extractor.settings['label'] = int(region)
             time_results = time_extractor.execute(image_slice, mask)
 
 
