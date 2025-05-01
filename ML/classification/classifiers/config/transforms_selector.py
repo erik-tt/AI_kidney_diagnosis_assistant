@@ -10,6 +10,8 @@ from monai.transforms import (
     EnsureChannelFirstd,
     Lambdad,
     ScaleIntensityd,
+    SpatialPadd,
+    RandAffined
 )
 
 import torchvision.transforms as transforms
@@ -33,7 +35,7 @@ def transforms_selector(transforms_name :str):
         transforms = [
             ScaleIntensityd(keys="image", minv=0.0, maxv=1.0),
             NormalizeIntensityd(keys=["image"], channel_wise=True, nonzero=True),  # Per-channel normalization
-            #SpatialPadd(keys=["image"], spatial_size=(128, 128, 180)), TA MED DENNE
+            SpatialPadd(keys=["image"], spatial_size=(-1, 180, -1)), #TA MED DENNE
             RandFlipd(keys="image", spatial_axis=2, prob=0.5), # FIKS PERMUTE HER
             #RandCoarseDropoutd( #decent
             #    keys=["image"], 

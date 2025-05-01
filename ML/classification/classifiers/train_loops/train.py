@@ -242,30 +242,18 @@ def k_fold_validation(model_name,
         val_set = [dataset[i] for i in val_idx]
         
         train_ds = ClassificationDataset(data_list=train_set,
-                                            start_frame=0,
-                                            end_frame=None,
-                                            agg="time_series",
-                                            cache=False,
                                             transforms=train_transforms,
                                             radiomics=True,
                                             train=True
                                             )
     
         feature_ds = ClassificationDataset(data_list=train_set, 
-                                            start_frame=0, 
-                                            end_frame=None,
-                                            agg="time_series", 
-                                            cache=False,
                                             transforms=val_transforms,
                                             radiomics=True,
                                             train=True
                                             )
 
         val_ds = ClassificationDataset(data_list=val_set, 
-                                            start_frame=0, 
-                                            end_frame=None, 
-                                            agg="time_series", 
-                                            cache=None,
                                             transforms=val_transforms, 
                                             radiomics=True,
                                             train=False
@@ -275,7 +263,6 @@ def k_fold_validation(model_name,
                                             start_frame=6, 
                                             end_frame=18,
                                             agg="mean", 
-                                            cache=False,
                                             transforms=train_transforms_baseline,
                                             radiomics=False,
                                             train=True
@@ -285,7 +272,6 @@ def k_fold_validation(model_name,
                                             start_frame=6, 
                                             end_frame=18,
                                             agg="mean", 
-                                            cache=False,
                                             transforms=val_transforms_baseline,
                                             radiomics=False,
                                             train=False
@@ -301,12 +287,12 @@ def k_fold_validation(model_name,
         val_dataloader_baseline = DataLoader(val_ds_baseline, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
         ## TRAIN BASELINE
-        for epoch in range(5): # HVOR MANGE EPOKER?
+        for epoch in range(0): # HVOR MANGE EPOKER?
             train_model(model_baseline, train_dataloader_baseline, optimizer_baseline, loss_function, device)
         
         ## EVAL BASELINE
-        model_baseline.eval()
-        _, accuracy_baseline, _ = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)    
+        #model_baseline.eval()
+        #_, accuracy_baseline, _ = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)    
         
         
         X_train, y_train = [], []
@@ -320,7 +306,6 @@ def k_fold_validation(model_name,
 
             if epoch != epochs - 1:
                 # TRAIN 3D CNN
-                # TIME_SERIES FOR 3D CNN
                 train_model(model, train_dataloader, optimizer, loss_function, device)
 
             else:
@@ -402,7 +387,7 @@ def k_fold_validation(model_name,
 
                 #CONFUSION MATRIX RADIOMICS
 
-                print(f"BASELINE acc: {accuracy_baseline}")
+                #print(f"BASELINE acc: {accuracy_baseline}")
                 print(f"NN acc: {neural_network_acc}")
                 print(f"RF acc: {rf_validation_accuracy}")
                 print(f"SVM acc: {svm_validation_accuracy}")

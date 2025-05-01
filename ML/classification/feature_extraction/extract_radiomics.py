@@ -8,6 +8,7 @@ from tqdm import tqdm
 import os
 from tsfresh import extract_features
 from tsfresh.feature_extraction import MinimalFCParameters
+import os
 
 logger.setLevel(logging.ERROR)
 
@@ -19,11 +20,13 @@ def extract_radiomic_features(image_series, mask, save_path):
     mask_array = sitk.GetArrayFromImage(mask) 
     mask_array = mask_array.squeeze()
 
+    time_path = os.path.join(os.path.dirname(__file__), "time_dependent_features.yaml")
     time_extractor = RadiomicsFeatureExtractor()
-    time_extractor.loadParams("./time_dependent_features.yaml")
+    time_extractor.loadParams(time_path)
     
+    static_path = os.path.join(os.path.dirname(__file__), "time_independent_features.yaml")
     static_extractor = RadiomicsFeatureExtractor()
-    static_extractor.loadParams("./time_independent_features.yaml")
+    static_extractor.loadParams(static_path)
 
     mask_array[(mask_array == 38) | (mask_array == 75)] = 1 
 
@@ -121,10 +124,13 @@ def save_radiomic_features(metadata):
 
         metadata.loc[metadata["ImageName"] == metadata_id, "RadiomicFeaturePath"] = file_path
 
-    metadata.to_csv("../../../data/metadata.csv", index=False)
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    data_dir = os.path.join(base_dir, "data")
 
-if __name__ == "__main__":
-    metadata = pd.read_csv("../../../data/metadata.csv")  
-    save_radiomic_features(metadata)
+    os.makedirs(data_dir, exist_ok=True)  
+
+    metadata_path = os.path.join(data_dir, "metadata.csv")
+    print(metadata_path)
+    metadata.to_csv(metadata_path, index=False)
 
 ## NB DETTE ER FRA GROUND TRUTH SEGMENTATION LABELS

@@ -63,8 +63,7 @@ def main(params):
                                                         data_suffices=params.data_suffix, 
                                                         start_frame=params.start_frame,
                                                         end_frame=params.end_frame,
-                                                        agg=params.agg,
-                                                        cache=params.cache)
+                                                        agg=params.agg)
 
         train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers)
         val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers) 
@@ -100,7 +99,6 @@ if __name__ == "__main__":
     parser.add_argument("--save",type=int, default=2) #TODO:implement save
     parser.add_argument("--start_frame", type=int, default=0)
     parser.add_argument("--end_frame", type=int, default=None)
-    parser.add_argument("--cache", type=bool, default=False)
     parser.add_argument("--agg", default="mean") # mean or time_series
     parser.add_argument("--k_fold", type=bool, default=False)
 
