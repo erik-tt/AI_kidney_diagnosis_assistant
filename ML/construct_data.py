@@ -101,5 +101,7 @@ df_labels["STUDY NAME"] = df_labels["STUDY NAME"].str.strip()
 df_metadata = pd.DataFrame(metadata_list)
 df_metadata = pd.merge(df_metadata, df_labels, how="left", left_on="PatientID", right_on="STUDY NAME")
 df_metadata.drop(columns=["STUDY NAME"], inplace=True)
+#Sort to get the dataset consistent across
+df_metadata = df_metadata.sort_values(by="ImageName")
 
 df_metadata.to_csv(metadata, index=False)
