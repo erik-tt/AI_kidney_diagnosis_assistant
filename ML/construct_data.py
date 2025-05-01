@@ -96,7 +96,6 @@ drsbru_labels = pd.read_csv("../data/labels/drsbru.csv")
 drsprg_labels = pd.read_csv("../data/labels/drsprg.csv")
 
 df_labels = pd.concat([drsbru_labels[["STUDY NAME", "CKD"]], drsprg_labels[["STUDY NAME", "CKD"]]], ignore_index=True)  # Resets index
-#df_labels["CKD"] = df_labels["CKD"] - 1 # 0 index CKD
 df_labels["STUDY NAME"] = df_labels["STUDY NAME"].str.strip()
 
 df_metadata = pd.DataFrame(metadata_list)
