@@ -38,7 +38,6 @@ class ClassificationDataset(Dataset):
         self.agg = agg
         self.scaler = MinMaxScaler()
         self.imputer = SimpleImputer(strategy='mean')
-        self.top_indices = None
         self.nan_cols = None
         self.radiomics = radiomics
         
@@ -66,11 +65,6 @@ class ClassificationDataset(Dataset):
 
             all_features = self.imputer.fit_transform(all_features)
 
-            correlations = np.array([np.corrcoef(all_features[:, i], all_labels)[0, 1] for i in range(all_features.shape[1])])
-
-            self.top_indices = np.argsort(np.abs(correlations))[-201:]
-            all_features = all_features[:, self.top_indices]
-
             self.scaler.fit(all_features)
 
             # Delete variables after fitting
@@ -97,8 +91,6 @@ class ClassificationDataset(Dataset):
             feature_values = feature_values[:, ~self.nan_cols]
             feature_values = self.imputer.transform(feature_values)
 
-            feature_values = feature_values[:, self.top_indices]
-
             self.scaler.transform(feature_values)
             scaled_features = feature_values.squeeze(0)
 
@@ -119,4 +111,4 @@ class ClassificationDataset(Dataset):
         return {"image": image, "label": label, "noisy_label": noisy_label, "radiomics": scaled_features}
     
     def get_objects(self):
-        return self.scaler, self.imputer, self.top_indices, self.nan_cols
+        return self.scaler, self.imputer, self.nan_cols

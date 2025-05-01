@@ -28,6 +28,7 @@ from sklearn.feature_selection import SelectFromModel, RFE
 from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.decomposition import PCA, FastICA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 
 
@@ -107,7 +108,7 @@ def validate(model, loss_function, val_dataloader, device, optimizer, epoch, epo
     validation_losses = []
     validation_accuracy = []
 
-    model.eval()
+    model.eval() # ER DETTE RIKTIG EGT? BURDE DET VÆRE model.model.eval()
     with torch.no_grad():
         X_val, y_val = [], []
         for batch in tqdm(val_dataloader):
@@ -239,13 +240,18 @@ def k_fold_validation(model_name,
         train_accuracy = []
         val_accuracy = []
         #Need to reinitalize the model every time
+        
+        # UNFREEZE LAYER 3 AND 4
         model = model_selector(model_name, device)
+
         model_baseline = model_selector("resnet18", device)
+        model_baseline_freeze = model_selector("resnet18optimize", device)
 
         loss_function = torch.nn.CrossEntropyLoss() # CAN USE LABEL SMOOTHING 
-        #optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=0.01) # With regularization
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001) ## ADAM W
-        optimizer_baseline = torch.optim.Adam(model.parameters(), lr=0.001)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001) # With regularization
+        #optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001) ## ADAM W
+        optimizer_baseline = torch.optim.Adam(model_baseline.parameters(), lr=0.001)
+        optimizer_baseline_mod = torch.optim.Adam(model_baseline_freeze.parameters(), lr=0.001) ## ADAM W
 
         print(f"Fold {fold+1}/{splits}")
 
@@ -302,39 +308,40 @@ def k_fold_validation(model_name,
                                             train=False
                                             )
         
-        val_ds.scaler, val_ds.imputer, val_ds.top_indices, val_ds.nan_cols = train_ds.get_objects()
+        val_ds.scaler, val_ds.imputer, val_ds.nan_cols = train_ds.get_objects()
+        feature_ds.scaler, feature_ds.imputer, feature_ds.nan_cols = train_ds.get_objects()
 
-        train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers) # SHUFFLE
-        feature_dataloader = DataLoader(feature_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers) # SHUFFLE
+        feature_dataloader = DataLoader(feature_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
         val_dataloader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-        train_dataloader_baseline = DataLoader(train_ds_baseline, batch_size=batch_size, shuffle=False, num_workers=num_workers) # SHUFFLE
+        train_dataloader_baseline = DataLoader(train_ds_baseline, batch_size=batch_size, shuffle=True, num_workers=num_workers) # SHUFFLE
         val_dataloader_baseline = DataLoader(val_ds_baseline, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
+        ## TRAIN BASELINE
+        for epoch in range(5): # HVOR MANGE EPOKER?
+            train_model(model_baseline, train_dataloader_baseline, optimizer_baseline, loss_function, device)
+        
+        ## EVAL BASELINE
+        model_baseline.eval()
+        _, accuracy_baseline, _ = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)    
+        
+        
+        X_train, y_train = [], []
+        X_val, y_val = [], []
+        
+        X_train_radiomics, X_val_radiomics = [], []
 
         for epoch in range(epochs):
             print("-" * 10)
             print(f"epoch {epoch + 1}/{epochs}")
 
-            X_train, y_train = [], []
-            X_val, y_val = [], []
-
             if epoch != epochs - 1:
                 # TRAIN 3D CNN
                 # TIME_SERIES FOR 3D CNN
-                for param in model.backbone.layer4.parameters(): 
-                    param.requires_grad = True
-                for param in model.backbone.layer3.parameters():  
-                    param.requires_grad = True
-                model.backbone.train()
                 train_model(model, train_dataloader, optimizer, loss_function, device)
 
-                # TRAIN BASELINE
-                # MEAN FOR 2D CNN
-                #train_model(model_baseline, train_dataloader_baseline, optimizer_baseline, loss_function, device) # PASSE PÅ RIKTIG SHAPE, TRENGER IKKE TRENES LIK EPOCHS 
             else:
                 # EVAL
-
-                ## EVAL BASELINE
-                #_, accuracy_baseline, _ = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)
 
                 ## EVAL MODELS
                 model.eval()
@@ -344,16 +351,17 @@ def k_fold_validation(model_name,
                 with torch.no_grad():
                     # TRAIN FEATURES
                     for batch in tqdm(feature_dataloader):
-                        images, labels, noisy_label, radiomics = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.float32), batch["radiomics"]
+                        images, labels, noisy_label, radiomics = batch["image"].to(device), batch["label"].to(device), batch["noisy_label"].to(device, dtype=torch.float32), batch["radiomics"]
                         labels = labels - 1
                         outputs, features = model(images)
 
                         features = features.detach().cpu().numpy() 
                         radiomics = radiomics.detach().cpu().numpy() if torch.is_tensor(radiomics) else radiomics 
                         combined_features = np.concatenate([features, radiomics], axis=1)  
-
-                        X_train.append(combined_features)
+                
+                        X_train.append(features)
                         y_train.append(labels.cpu().numpy())  
+                        X_train_radiomics.append(combined_features)
                     
                     #VAL FEATURES
                     total = 0
@@ -375,36 +383,53 @@ def k_fold_validation(model_name,
                         radiomics = radiomics.detach().cpu().numpy() if torch.is_tensor(radiomics) else radiomics 
                         combined_features = np.concatenate([features, radiomics], axis=1)  
 
-                        X_val.append(combined_features)  
+                        X_val.append(features)  
                         y_val.append(label.cpu().numpy())  
+                        X_val_radiomics.append(combined_features)
                 
                 neural_network_acc = correct / total
 
                 X_train = np.concatenate(X_train, axis=0)  
                 y_train = np.concatenate(y_train, axis=0) 
-
+                
                 X_val = np.concatenate(X_val, axis=0)  
                 y_val = np.concatenate(y_val, axis=0) 
 
+                X_train_radiomics = np.concatenate(X_train_radiomics, axis=0) 
+                X_val_radiomics = np.concatenate(X_val_radiomics, axis=0)  
+                
+
                 scaler = StandardScaler()
 
-                X_train = scaler.fit_transform(X_train) # SCALER radiomics to ganger nå
+                X_train = scaler.fit_transform(X_train)
                 X_val = scaler.transform(X_val)
 
-                print(X_train.shape)
+
+                scaler2 = StandardScaler()
+                X_train_radiomics = scaler2.fit_transform(X_train_radiomics) # SCALER radiomics to ganger nå
+                X_val_radiomics = scaler2.transform(X_val_radiomics)
 
                 rf_validation_accuracy, rf_pred, svm_validation_accuracy, svm_pred = train_models(X_train, y_train, X_val, y_val)
-
+                
                 rf_conf_matr_labels.extend(y_val)
                 rf_conf_matr_pred.extend(rf_pred)
 
                 svm_conf_matr_labels.extend(y_val)
                 svm_conf_matr_pred.extend(svm_pred)
 
-                #print(accuracy_baseline)
+                #CONFUSION MATRIX RADIOMICS
+
+                print(f"BASELINE acc: {accuracy_baseline}")
                 print(f"NN acc: {neural_network_acc}")
                 print(f"RF acc: {rf_validation_accuracy}")
                 print(f"SVM acc: {svm_validation_accuracy}")
+
+                print("")
+                print("WITH RADIOMICS")
+                rf_validation_accuracy_radiomics, rf_pred_radiomics, svm_validation_accuracy_radiomics, svm_pred_radiomics = train_models(X_train_radiomics, y_train, X_val_radiomics, y_val)
+
+                print(f"RF radiomics acc: {rf_validation_accuracy_radiomics}")
+                print(f"SVM radiomics acc: {svm_validation_accuracy_radiomics}")
 
     #Report all labels and predictions across folds
     print(f"NN validation labels across all folds: {nn_conf_matr_labels}")
@@ -426,26 +451,62 @@ def k_fold_validation(model_name,
 
 def train_models(X_train, y_train, X_val, y_val):
 
-    rf_model = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10)
+    rf_model = RandomForestClassifier(n_estimators=100, min_samples_leaf=2, random_state=42)
     rf_model.fit(X_train, y_train)
     y_pred_rf = rf_model.predict(X_val)
     rf_validation_accuracy = accuracy_score(y_val, y_pred_rf)
 
-    svm = SVC(kernel='linear', C=1.0, random_state=42)
+    et_model = ExtraTreesClassifier(n_estimators=100, min_samples_leaf=2 , max_features=1.0, bootstrap=True, random_state=42)
+    et_model.fit(X_train, y_train)
+    y_pred_et = et_model.predict(X_val)
+    et_validation_accuracy = accuracy_score(y_val, y_pred_et)
+
+    svm = SVC(kernel='linear', C=0.001, random_state=42)
     svm.fit(X_train, y_train)
     y_pred_svm = svm.predict(X_val)
     svm_validation_accuracy = accuracy_score(y_val, y_pred_svm)
 
-    ensemble_svm = BaggingClassifier(
-        estimator=svm,
-        n_estimators=10,             
-        max_samples=0.67,             
-        max_features=0.1,             
-        bootstrap=True,               
+    knn_model = KNeighborsClassifier(n_neighbors=7)
+    ensemble_knn = BaggingClassifier(
+        estimator=knn_model,
+        n_estimators=500,              
+        max_samples=1.0,              
+        max_features=1.0,             
+        bootstrap=False,               
         bootstrap_features=True,      
         random_state=42,
-        n_jobs=-1                    
+        n_jobs=-1                     
     )
+    ensemble_knn.fit(X_train, y_train)
+    y_pred_knn = ensemble_knn.predict(X_val)
+    knn_validation_accuracy = accuracy_score(y_val, y_pred_knn)
+
+    logreg_model = LogisticRegression(solver='liblinear', max_iter=500, C=0.01) # use elasticnet penalty
+    logreg_model.fit(X_train, y_train)
+    y_pred_logreg = logreg_model.predict(X_val)
+    logreg_validation_accuracy = accuracy_score(y_val, y_pred_logreg)
+
+    print(f"KNN {knn_validation_accuracy}")
+    print(f"Logreg {logreg_validation_accuracy}")
+    print(f"ET {et_validation_accuracy}")
+
+    svm_model_prob = SVC(kernel="linear", C=0.001, probability=True) 
+
+    voting_clf = VotingClassifier(
+        estimators=[
+            ('svc', svm_model_prob),
+            ('knn', ensemble_knn),
+            ('logreg', logreg_model),
+            ('rf', rf_model),
+            ('et', et_model),
+        ],
+        voting='soft'
+    )
+
+    voting_clf.fit(X_train, y_train)
+    y_pred_ensemble = voting_clf.predict(X_val)
+    ensemble_validation_accuracy = accuracy_score(y_val, y_pred_ensemble)
+    print(f"Ensemble {ensemble_validation_accuracy}")
 
     return rf_validation_accuracy, y_pred_rf, svm_validation_accuracy, y_pred_svm
 

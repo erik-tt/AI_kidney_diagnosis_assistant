@@ -1,17 +1,9 @@
 from typing import List
 from sklearn.model_selection import train_test_split
 from config.transforms_selector import transforms_selector
-from dataset.SampleDataset import SampleDataset2
 from monai.data import CacheDataset, Dataset
-from monai.data import CacheDataset
 from ML.utils.file_reader import get_classification_data
 from ML.classification.classifiers.dataset.ClassificationDataset import ClassificationDataset
-
-# REmove
-import pandas as pd
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 def create_dataset(transforms_name: str,
                    data_dir: List[str],
