@@ -46,8 +46,7 @@ def plot_confusion_matrix(true_labels, predicted_labels, predictor):
     sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", cbar=False, xticklabels=CKD_stages, yticklabels=CKD_stages)
     plt.xlabel("Predicted")
     plt.ylabel("True")
-    plt.title(f"Confusion Matrix for validation set using {predictor}")
-    plt.show()
+    plt.title(f"Confusion Matrix for {predictor}")
     
     return fig
         
@@ -214,11 +213,21 @@ def k_fold_validation(model_name,
     skf = StratifiedKFold(n_splits=splits, shuffle=True, random_state=42)
 
     nn_conf_matr_labels = []
+    conf_matr_labels = []
     nn_conf_matr_pred = []
-    rf_conf_matr_labels = []
     rf_conf_matr_pred = []
-    svm_conf_matr_labels = []
     svm_conf_matr_pred = []
+    knn_conf_matr_pred = []
+    logreg_conf_matr_pred = []
+    ensemble_conf_matr_pred = []
+    et_conf_matr_pred = []
+
+    rf_conf_matr_pred_rad = []
+    svm_conf_matr_pred_rad = []
+    knn_conf_matr_pred_rad = []
+    logreg_conf_matr_pred_rad = []
+    ensemble_conf_matr_pred_rad = []
+    et_conf_matr_pred_rad = []
 
     train_transforms, val_transforms = transforms_selector(transforms_name)
     train_transforms_baseline, val_transforms_baseline = transforms_selector("pretrained")
@@ -392,42 +401,81 @@ def k_fold_validation(model_name,
                 X_train_radiomics = scaler2.fit_transform(X_train_radiomics) # SCALER radiomics to ganger nå
                 X_val_radiomics = scaler2.transform(X_val_radiomics)
 
-                rf_validation_accuracy, rf_pred, svm_validation_accuracy, svm_pred = train_models(X_train, y_train, X_val, y_val)
+                rf_validation_accuracy, rf_pred, svm_validation_accuracy, svm_pred, y_pred_knn, y_pred_logreg, y_pred_ensemble, knn_validation_accuracy, logreg_validation_accuracy, et_validation_accuracy, y_pred_et, ensemble_validation_accuracy = train_models(X_train, y_train, X_val, y_val)
                 
-                rf_conf_matr_labels.extend(y_val)
+                conf_matr_labels.extend(y_val)
                 rf_conf_matr_pred.extend(rf_pred)
-
-                svm_conf_matr_labels.extend(y_val)
                 svm_conf_matr_pred.extend(svm_pred)
+                knn_conf_matr_pred.extend(y_pred_knn)
+                logreg_conf_matr_pred.extend(y_pred_logreg)
+                ensemble_conf_matr_pred.extend(y_pred_ensemble)
+                et_conf_matr_pred.extend(y_pred_et)
 
-                #CONFUSION MATRIX RADIOMICS
-
+                #Accuracy scores
                 print(f"BASELINE acc: {accuracy_baseline}")
                 print(f"NN acc: {neural_network_acc}")
+                print(f"KNN acc {knn_validation_accuracy}")
+                print(f"Logreg acc {logreg_validation_accuracy}")
+                print(f"ET acc {et_validation_accuracy}")
                 print(f"RF acc: {rf_validation_accuracy}")
                 print(f"SVM acc: {svm_validation_accuracy}")
+                print(f"Ensemble acc: {ensemble_validation_accuracy}")
 
-                print("")
+                writer.add_scalar("BASELINE acc", accuracy_baseline, fold + 1)
+                writer.add_scalar("NN acc", neural_network_acc, fold + 1)
+                writer.add_scalar("KNN acc", knn_validation_accuracy, fold + 1)
+                writer.add_scalar("Logreg acc", logreg_validation_accuracy, fold + 1)
+                writer.add_scalar("ET acc", et_validation_accuracy, fold + 1)
+                writer.add_scalar("RF acc", rf_validation_accuracy, fold + 1)
+                writer.add_scalar("SVM acc", svm_validation_accuracy, fold + 1)
+    
+
+               
+                rf_validation_accuracy_rad, rf_pred_rad, svm_validation_accuracy_rad, svm_pred_rad, y_pred_knn_rad, y_pred_logreg_rad, y_pred_ensemble_rad, knn_validation_accuracy_rad, logreg_validation_accuracy_rad, et_validation_accuracy_rad, y_pred_et_rad, ensemble_validation_accuracy_rad = train_models(X_train_radiomics, y_train, X_val_radiomics, y_val)
+                
+                #NN
+                rf_conf_matr_pred_rad.extend(rf_pred_rad)
+                svm_conf_matr_pred_rad.extend(svm_pred_rad)
+                knn_conf_matr_pred_rad.extend(y_pred_knn_rad)
+                logreg_conf_matr_pred_rad.extend(y_pred_logreg_rad)
+                ensemble_conf_matr_pred_rad.extend(y_pred_ensemble_rad)
+                et_conf_matr_pred_rad.extend(y_pred_et_rad)
+                
+                print("\n")
                 print("WITH RADIOMICS")
-                rf_validation_accuracy_radiomics, rf_pred_radiomics, svm_validation_accuracy_radiomics, svm_pred_radiomics = train_models(X_train_radiomics, y_train, X_val_radiomics, y_val)
+                print(f"KNN acc {knn_validation_accuracy_rad}")
+                print(f"Logreg acc {logreg_validation_accuracy_rad}")
+                print(f"ET acc {et_validation_accuracy_rad}")
+                print(f"RF radiomics acc: {rf_validation_accuracy_rad}")
+                print(f"SVM radiomics acc: {svm_validation_accuracy_rad}")
+                print(f"Ensemble radiomics acc: {ensemble_validation_accuracy_rad}")
+                
 
-                print(f"RF radiomics acc: {rf_validation_accuracy_radiomics}")
-                print(f"SVM radiomics acc: {svm_validation_accuracy_radiomics}")
+                writer.add_scalar("BASELINE Radiomics acc", rf_validation_accuracy_rad, fold + 1)
+                #NN
+                writer.add_scalar("KNN Radiomics acc", knn_validation_accuracy, fold + 1)
+                writer.add_scalar("Logreg Radiomics acc", logreg_validation_accuracy, fold + 1)
+                writer.add_scalar("ET Radiomics acc", et_validation_accuracy, fold + 1)
+                writer.add_scalar("RF Radiomics acc", rf_validation_accuracy, fold + 1)
+                writer.add_scalar("SVM Radiomics acc", svm_validation_accuracy_rad, fold + 1)
+                writer.add_scalar("Ensemble Radiomics acc", ensemble_validation_accuracy_rad, fold + 1)
 
-    #Report all labels and predictions across folds
-    print(f"NN validation labels across all folds: {nn_conf_matr_labels}")
-    print(f"NN validation predictions across all folds: {nn_conf_matr_pred}")
-    print("\n")
-    print(f"RF validation labels across all folds: {nn_conf_matr_labels}")
-    print(f"RF validation predictions across all folds: {nn_conf_matr_pred}")
-    print("\n")
-    print(f"SVM validation labels across all folds: {nn_conf_matr_labels}")
-    print(f"SVM validation predictions across all folds: {nn_conf_matr_pred}")
 
-    #Plot confusion matrixs
-    plot_confusion_matrix(nn_conf_matr_labels, nn_conf_matr_pred, "3D CNN + NN classifier")
-    plot_confusion_matrix(rf_conf_matr_labels, rf_conf_matr_pred, "3D CNN + RF classifier")
-    plot_confusion_matrix(svm_conf_matr_labels, svm_conf_matr_pred, "3D CNN + SVM classifier")
+    #Plot confusion matrix
+    #Without rad features
+    writer.add_figure("3D CNN Feature Extractor + NN Classifier", plot_confusion_matrix(nn_conf_matr_labels, nn_conf_matr_pred, "3D CNN Feature Extractor + NN Classifier"))
+    writer.add_figure("3D CNN Feature Extractor + KNN", plot_confusion_matrix(conf_matr_labels, knn_conf_matr_pred, "3D CNN Feature Extractor + KNN"))
+    writer.add_figure("3D CNN Feature Extractor + Logistic Regression Classifier", plot_confusion_matrix(conf_matr_labels, logreg_conf_matr_pred, "3D CNN Feature Extractor + Logistic Regression Classifier"))
+    writer.add_figure("3D CNN Feature Extractor +  Extra Trees Classifier",  plot_confusion_matrix(conf_matr_labels, et_conf_matr_pred, "3D CNN Feature Extractor + Extra Trees Classifier"))
+    writer.add_figure("3D CNN Feature Extractor + RF classifier",  plot_confusion_matrix(conf_matr_labels, rf_conf_matr_pred,  "3D CNN Feature Extractor + RF classifier"))
+    writer.add_figure("3D CNN Feature Extractor + SVM classifier",  plot_confusion_matrix(conf_matr_labels, svm_conf_matr_pred,  "3D CNN Feature Extractor + SVM Classifier"))
+
+    #With rad features
+    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + KNN", plot_confusion_matrix(conf_matr_labels, knn_conf_matr_pred_rad, "3D CNN Feature Extractor + KNN"))
+    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + Logistic Regression Classifier", plot_confusion_matrix(conf_matr_labels, logreg_conf_matr_pred_rad, "3D CNN Feature Extractor + Logistic Regression Classifier"))
+    writer.add_figure("3D CNN Feature Extractor With Radiomic Features +  Extra Trees Classifier",  plot_confusion_matrix(conf_matr_labels, et_conf_matr_pred_rad, "3D CNN Feature Extractor + Extra Trees Classifier"))
+    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + RF classifier",  plot_confusion_matrix(conf_matr_labels, rf_conf_matr_pred_rad,  "3D CNN Feature Extractor + RF classifier"))
+    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + SVM classifier",  plot_confusion_matrix(conf_matr_labels, svm_conf_matr_pred_rad,  "3D CNN Feature Extractor + SVM Classifier"))
 
                 
 
@@ -469,9 +517,6 @@ def train_models(X_train, y_train, X_val, y_val):
     y_pred_logreg = logreg_model.predict(X_val)
     logreg_validation_accuracy = accuracy_score(y_val, y_pred_logreg)
 
-    print(f"KNN {knn_validation_accuracy}")
-    print(f"Logreg {logreg_validation_accuracy}")
-    print(f"ET {et_validation_accuracy}")
 
     svm_model_prob = SVC(kernel="linear", C=0.001, probability=True) 
 
@@ -489,6 +534,5 @@ def train_models(X_train, y_train, X_val, y_val):
     voting_clf.fit(X_train, y_train)
     y_pred_ensemble = voting_clf.predict(X_val)
     ensemble_validation_accuracy = accuracy_score(y_val, y_pred_ensemble)
-    print(f"Ensemble {ensemble_validation_accuracy}")
 
-    return rf_validation_accuracy, y_pred_rf, svm_validation_accuracy, y_pred_svm
+    return rf_validation_accuracy, y_pred_rf, svm_validation_accuracy, y_pred_svm, y_pred_knn, y_pred_logreg, y_pred_ensemble, knn_validation_accuracy, logreg_validation_accuracy, et_validation_accuracy, y_pred_et, ensemble_validation_accuracy
