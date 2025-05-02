@@ -6,13 +6,10 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 
 
-class CNNWeakModel(nn.Module):
+class CNNWeakRadiomics(nn.Module):
     def __init__(self, num_classes=5):
-        super(CNNWeakModel, self).__init__()
-        # Resnet18 feature extraction, Pytorch
+        super(CNNWeakRadiomics, self).__init__()
         self.backbone = ResNetFeatures(model_name="resnet18", pretrained=True)
-        self.num_layers = 4
-        self.hidden_dim = 512
         
         # FREEZE LAYERS
         self.backbone.eval()
@@ -26,16 +23,55 @@ class CNNWeakModel(nn.Module):
                 param.requires_grad = True
         
         self.fc = nn.Sequential(
-            nn.Linear(3072, num_classes),
+            nn.Linear(3918, num_classes),
             #nn.ReLU(),
             #nn.Linear(128, 1)
         )
-        self.temporal_pool = nn.AvgPool3d(kernel_size=(3, 1, 1), stride=(1, 1, 1))
 
+
+    def forward(self, image, radiomics):
+        # x is average image'
+        batch_size = image.shape[0]
+        #https://www.kaggle.com/code/kanncaa1/long-short-term-memory-with-pytorch
+        images = image.permute(0,1,3,2,4)
+        
+        features = self.backbone(images)
+        features = features[-1]
+        B, C, D, H, W = features.shape
+        features = features.mean(dim=[-1, -2])
+        features = features.reshape(B, -1)
+        features = features.float()
+        radiomics = radiomics.float()
+
+        all_feats = torch.cat([features, radiomics], dim=1)
+        out = self.fc(all_feats).squeeze(-1) # SQUEEZE regression
+        # RETURNERE RADIOMIC FEATURES HERE?
+        return out, features
+    
+class CNNWeakModel(nn.Module):
+    def __init__(self, num_classes=5):
+        super(CNNWeakModel, self).__init__()
+        # Resnet18 feature extraction, Pytorch
+        self.backbone = ResNetFeatures(model_name="resnet18", pretrained=True)
+        
+        # FREEZE LAYERS
+        self.backbone.eval()
+        for param in self.backbone.parameters():
+            param.requires_grad = False
+        
+        ## UNFREEZE LAYER 3 & 4
+        for layer in [self.backbone.layer3, self.backbone.layer4]:
+            layer.train()  # Important: puts BatchNorm in training mode
+            for param in layer.parameters():
+                param.requires_grad = True
+        
+        self.fc = nn.Sequential(
+            nn.Linear(3072, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_classes)
+        )
 
     def forward(self, images):
-        # x is average image'
-        batch_size = images.shape[0]
         #https://www.kaggle.com/code/kanncaa1/long-short-term-memory-with-pytorch
         images = images.permute(0,1,3,2,4)
 
@@ -50,28 +86,34 @@ class CNNWeakModel(nn.Module):
         out = self.fc(features).squeeze(-1) # SQUEEZE regression
         return out, features
 
-class Resnet18Optimize(nn.Module):
+class Resnet18Radiomics(nn.Module):
     def __init__(self, num_classes=5):
         super().__init__()
         
-        self.model = TorchVisionFCModel(
+        self.backbone = TorchVisionFCModel(
             model_name='resnet18',
             num_classes=num_classes,
             pretrained=True
         )
 
-        # FREEZE ALL LAYERS
-        for param in self.model.parameters():
-            param.requires_grad = False
-        
-        
-        ## UNFREEZE LAYER 3 & 4 & FC    
-        for layer in [self.model.features[6], self.model.features[7], self.model.fc]:
-            for param in layer.parameters():
-                param.requires_grad = True
+        self.backbone_fc = self.backbone.fc  
+        self.backbone.fc = nn.Identity()     
 
-    def forward(self, x):
-        return self.model(x)
+        self.fc = nn.Linear(
+            self.backbone_fc.in_features + 846,  # 846 is RADIOMICS DIM
+            num_classes
+        )
+
+    def forward(self, image, radiomics):
+
+        image_features = self.backbone(image)
+
+        radiomics = radiomics.float()
+        image_features = image_features.float()
+
+        combined = torch.cat((image_features, radiomics), dim=1) 
+
+        return self.fc(combined)
     
 class CNNTransformerModel(nn.Module):
     def __init__(self, device, in_channels=1, num_classes=5):
@@ -283,14 +325,16 @@ def model_selector(model_name :str, device: torch.device):
 
     elif model_name.lower() == "mobilenetv3":
         return get_mobilenetv3()
+    elif model_name.lower() == "resnet18radiomics":
+        return Resnet18Radiomics().to(device)
     elif model_name.lower() == "cnnlstm":
         return CNNLSTMModel(device=device).to(device)
     elif model_name.lower() == "cnntransformer":
         return CNNTransformerModel(device=device).to(device)
-    elif model_name.lower() == "resnet18optimize":
-        return Resnet18Optimize().to(device)
     elif model_name.lower() == "cnnweak":
         return CNNWeakModel().to(device)
+    elif model_name.lower() == "cnnweakradiomics":
+        return CNNWeakRadiomics().to(device)
     
     #Improve the ViT before further use to make sure it is configured properly
     #Can be configured to 3D for temporal dimension (but should look into ViViT)

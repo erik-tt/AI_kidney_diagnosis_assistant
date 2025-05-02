@@ -99,7 +99,7 @@ def train(model,
 
     return np.mean(training_losses), np.mean(training_accuracy), X_train, y_train
 
-def validate(model, loss_function, val_dataloader, device, optimizer, epoch, epochs_to_save=10): # FIX epochs to save
+def validate(model, loss_function, val_dataloader, device, optimizer, epoch, epochs_to_save=10, radiomics = False): # FIX epochs to save
     correct = 0
     total = 0
     validation_labels = []
@@ -109,13 +109,15 @@ def validate(model, loss_function, val_dataloader, device, optimizer, epoch, epo
 
     model.eval() # ER DETTE RIKTIG EGT? BURDE DET VÆRE model.model.eval()
     with torch.no_grad():
-        X_val, y_val = [], []
         for batch in tqdm(val_dataloader):
-                images, labels = batch["image"].to(device), batch["label"].to(device, dtype=torch.long)
+                images, labels, radiomic_feats = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["radiomics"].to(device)
                 
                 labels = labels - 1
+                if radiomics:
+                    outputs = model(images, radiomic_feats)
+                else:
+                    outputs = model(images)
 
-                outputs = model(images)
                 if isinstance(outputs, tuple):
                     outputs, features = outputs
                 else:
@@ -185,13 +187,18 @@ def train_loop(model,
     
     writer.flush()
 
-def train_model(model, dataloader, optimizer, loss_function, device):
+def train_model(model, dataloader, optimizer, loss_function, device, radiomics = False):
     model.train()
     for batch in tqdm(dataloader):
-        images, labels, noisy_label = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.float32)
+        images, labels, noisy_label, radiomic_feats = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.float32), batch["radiomics"].to(device)
         optimizer.zero_grad()
+
         labels = labels - 1
-        outputs = model(images)
+        if radiomics:
+            outputs = model(images, radiomic_feats)
+        else:
+            outputs = model(images)
+
         if isinstance(outputs, tuple):
             outputs, features = outputs
 
@@ -210,7 +217,7 @@ def k_fold_validation(model_name,
                       splits: int = 5):
     
     
-    skf = StratifiedKFold(n_splits=splits, shuffle=True, random_state=42)
+    skf = StratifiedKFold(n_splits=splits, shuffle=True, random_state=40)
 
     nn_conf_matr_labels = []
     conf_matr_labels = []
@@ -239,11 +246,15 @@ def k_fold_validation(model_name,
         
         ## MODELS TO TEST
         model = model_selector(model_name, device)
+        model_radiomics = model_selector("cnnweakradiomics", device)
         model_baseline = model_selector("resnet18", device)
+        model_baseline_radiomics = model_selector("resnet18radiomics", device)
 
         loss_function = torch.nn.CrossEntropyLoss() 
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001) 
+        optimizer_radiomics = torch.optim.Adam(model_radiomics.parameters(), lr=0.001) 
         optimizer_baseline = torch.optim.Adam(model_baseline.parameters(), lr=0.001)
+        optimizer_baseline_radiomics = torch.optim.Adam(model_baseline_radiomics.parameters(), lr=0.001)
 
         print(f"Fold {fold+1}/{splits}")
 
@@ -273,7 +284,7 @@ def k_fold_validation(model_name,
                                             end_frame=18,
                                             agg="mean", 
                                             transforms=train_transforms_baseline,
-                                            radiomics=False,
+                                            radiomics=True,
                                             train=True
                                             )
         
@@ -282,13 +293,17 @@ def k_fold_validation(model_name,
                                             end_frame=18,
                                             agg="mean", 
                                             transforms=val_transforms_baseline,
-                                            radiomics=False,
+                                            radiomics=True,
                                             train=False
                                             )
         
+        ## GET SCALER, IMPUTER AND NAN COLS FROM TRAIN SET TO VAL SET FOR RADIOMICS
         val_ds.scaler, val_ds.imputer, val_ds.nan_cols = train_ds.get_objects()
         feature_ds.scaler, feature_ds.imputer, feature_ds.nan_cols = train_ds.get_objects()
 
+        val_ds_baseline.scaler, val_ds_baseline.imputer, val_ds_baseline.nan_cols = train_ds_baseline.get_objects()
+
+        # INITIALIZE DATALOADERS
         train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers) 
         feature_dataloader = DataLoader(feature_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
         val_dataloader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
@@ -296,13 +311,18 @@ def k_fold_validation(model_name,
         val_dataloader_baseline = DataLoader(val_ds_baseline, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
         ## TRAIN BASELINE
-        for epoch in range(5): # HVOR MANGE EPOKER?
-            train_model(model_baseline, train_dataloader_baseline, optimizer_baseline, loss_function, device)
+        for epoch in range(0): # HVOR MANGE EPOKER?
+            train_model(model_baseline_radiomics, train_dataloader_baseline, optimizer_baseline_radiomics, loss_function, device, radiomics=True)
+            #train_model(model_baseline, train_dataloader_baseline, optimizer_baseline, loss_function, device)
         
         ## EVAL BASELINE
-        model_baseline.eval()
-        _, accuracy_baseline, _ = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)    
+        #model_baseline.eval()
+        #_, accuracy_baseline, _ = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch) 
+
+        #model_baseline_radiomics.eval()
+        #_, accuracy_baseline_radiomics, _ = validate(model_baseline_radiomics, loss_function, val_dataloader_baseline, device, optimizer_baseline_radiomics, epoch, radiomics=True)    
         
+        #print(accuracy_baseline_radiomics)
         
         X_train, y_train = [], []
         X_val, y_val = [], []
@@ -316,9 +336,13 @@ def k_fold_validation(model_name,
             if epoch != epochs - 1:
                 # TRAIN 3D CNN
                 train_model(model, train_dataloader, optimizer, loss_function, device)
-
+                #train_model(model_radiomics, train_dataloader, optimizer_radiomics, loss_function, device, radiomics=True)
             else:
                 # EVAL
+
+                ## EVAL RADIOMICS MODEL
+
+                #_, accuracy_radiomics, _ = validate(model_radiomics, loss_function, val_dataloader, device, optimizer_radiomics, epoch, radiomics=True) 
 
                 ## EVAL MODELS
                 model.eval()
@@ -397,7 +421,8 @@ def k_fold_validation(model_name,
                 et_conf_matr_pred.extend(y_pred_et)
 
                 #Accuracy scores
-                print(f"BASELINE acc: {accuracy_baseline}")
+                #print(f"BASELINE acc: {accuracy_baseline}")
+                #print(f"3D NN RADIOMICS acc: {accuracy_radiomics}")
                 print(f"NN acc: {neural_network_acc}")
                 print(f"KNN acc {knn_validation_accuracy}")
                 print(f"Logreg acc {logreg_validation_accuracy}")
@@ -406,7 +431,7 @@ def k_fold_validation(model_name,
                 print(f"SVM acc: {svm_validation_accuracy}")
                 print(f"Ensemble acc: {ensemble_validation_accuracy}")
 
-                writer.add_scalar("BASELINE acc", accuracy_baseline, fold + 1)
+                #writer.add_scalar("BASELINE acc", accuracy_baseline, fold + 1)
                 writer.add_scalar("NN acc", neural_network_acc, fold + 1)
                 writer.add_scalar("KNN acc", knn_validation_accuracy, fold + 1)
                 writer.add_scalar("Logreg acc", logreg_validation_accuracy, fold + 1)
@@ -491,7 +516,6 @@ def train_models(X_train, y_train, X_val, y_val):
         bootstrap=False,               
         bootstrap_features=True,      
         random_state=42,
-        n_jobs=-1                     
     )
     ensemble_knn.fit(X_train, y_train)
     y_pred_knn = ensemble_knn.predict(X_val)

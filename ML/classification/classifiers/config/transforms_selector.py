@@ -14,8 +14,6 @@ from monai.transforms import (
     RandAffined
 )
 
-import torchvision.transforms as transforms
-
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 
@@ -61,7 +59,7 @@ def transforms_selector(transforms_name :str):
             RepeatChanneld(keys=["image"], repeats=3),
             Lambdad(keys=["image"], func=lambda x: x.permute(0,3,2,1)), # FIKS RIKTIG PERMUTE
             Resized(keys=["image"], spatial_size=[-1, 224, 224]), 
-            
+            ScaleIntensityd(keys="image", minv=0.0, maxv=1.0),
             # LITT USIKKER PÅ DENNE
             # PRØV EGET DATASET, KOMMER ANN PÅ OM MAN SKAL FINETUNE
             NormalizeIntensityd(
@@ -70,12 +68,6 @@ def transforms_selector(transforms_name :str):
             divisor=IMAGENET_STD,  
             channel_wise=True
             ), 
-        ]
-
-    if transforms_name == "3dtransforms":
-        transforms = [
-            Resized(keys=["image"], spatial_size=(120, 224, 224)),
-            RandFlipd(keys=["image"], spatial_axis=2, prob=0.5),
         ]
 
     train_transforms = PRE_TRANSFORMS + transforms + POST_TRANSFORMS
