@@ -4,7 +4,6 @@ import torch
 from tqdm import tqdm
 from monai.data import DataLoader, Dataset, CacheDataset
 from torch.utils.tensorboard import SummaryWriter
-from sklearn.metrics import confusion_matrix
 import seaborn as sns
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, StackingClassifier, VotingClassifier
@@ -35,7 +34,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.feature_selection import SelectKBest, f_classif, RFE, SelectFromModel
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score
 import numpy as np
 
 
@@ -49,6 +48,7 @@ def plot_confusion_matrix(true_labels, predicted_labels, predictor):
     plt.title(f"Confusion Matrix for {predictor}")
     
     return fig
+
         
 
 def train(model, 
@@ -151,7 +151,9 @@ def validate(model, loss_function, val_dataloader, device, optimizer, epoch, epo
                
 
     validation_accuracy.append(correct / total)
-    return np.mean(validation_losses), np.mean(validation_accuracy), validation_predictions
+    precision = precision_score(validation_labels, validation_predictions, average=None)
+    recall = recall_score(validation_labels, validation_predictions, average=None)
+    return np.mean(validation_losses), np.mean(validation_accuracy), validation_predictions, precision, recall
 
 def train_loop(model, 
                epochs: int, 
@@ -301,7 +303,7 @@ def k_fold_validation(model_name,
         
         ## EVAL BASELINE
         model_baseline.eval()
-        _, accuracy_baseline, _ = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)    
+        _, accuracy_baseline, _, precision_baseline, recall_baseline = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)    
         
         
         X_train, y_train = [], []
@@ -343,6 +345,7 @@ def k_fold_validation(model_name,
                     #VAL FEATURES
                     total = 0
                     correct = 0
+                    nn_predicted_fold = []
                     for batch in tqdm(val_dataloader):
                         img, label, noisy_label, radiomics = batch["image"].to(device), batch["label"].to(device), batch["noisy_label"].to(device, dtype=torch.long), batch["radiomics"]
                         label = label - 1
@@ -351,6 +354,7 @@ def k_fold_validation(model_name,
                         # FOR NEURAL NETWORK PREDS
                         _, predicted = torch.max(outputs.data, 1)
                         nn_conf_matr_pred.extend(predicted.tolist())
+                        nn_predicted_fold.extend(predicted.tolist())
                         nn_conf_matr_labels.extend(label.tolist())
 
                         total += label.size(0)
@@ -364,6 +368,7 @@ def k_fold_validation(model_name,
                         y_val.append(label.cpu().numpy())  
                         X_val_radiomics.append(combined_features)
                 
+
                 neural_network_acc = correct / total
 
                 X_train = np.concatenate(X_train, axis=0)  
@@ -396,23 +401,69 @@ def k_fold_validation(model_name,
                 ensemble_conf_matr_pred.extend(y_pred_ensemble)
                 et_conf_matr_pred.extend(y_pred_et)
 
-                #Accuracy scores
+                #Eval scores
                 print(f"BASELINE acc: {accuracy_baseline}")
-                print(f"NN acc: {neural_network_acc}")
-                print(f"KNN acc {knn_validation_accuracy}")
-                print(f"Logreg acc {logreg_validation_accuracy}")
-                print(f"ET acc {et_validation_accuracy}")
-                print(f"RF acc: {rf_validation_accuracy}")
-                print(f"SVM acc: {svm_validation_accuracy}")
-                print(f"Ensemble acc: {ensemble_validation_accuracy}")
-
                 writer.add_scalar("BASELINE acc", accuracy_baseline, fold + 1)
-                writer.add_scalar("NN acc", neural_network_acc, fold + 1)
+                print(f"Baseline precision: {precision_baseline}")
+                writer.add_text("Baseline precision", str(precision_baseline), fold + 1)
+                print(f"Baseline recall: {precision_baseline}")
+                writer.add_text("Baseline recall", str(recall_baseline), fold + 1)
+
+                print("\n")
+                print(f"NN acc: {neural_network_acc}")
+                writer.add_scalar("NN acc",neural_network_acc, fold + 1)
+                print(f"NN precision: {precision_score(y_val, nn_predicted_fold, average=None)}")
+                writer.add_text("NN precision", str(precision_score(y_val, nn_predicted_fold, average=None)), fold + 1)
+                print(f"NN recall: {recall_score(y_val, nn_predicted_fold, average=None)}")
+                writer.add_text("NN recall", str(recall_score(y_val, nn_predicted_fold, average=None)), fold + 1)
+
+                print("\n")
+                print(f"KNN acc {knn_validation_accuracy}")
                 writer.add_scalar("KNN acc", knn_validation_accuracy, fold + 1)
+                print(f"KNN precision: {precision_score(y_val, y_pred_knn, average=None)}")
+                writer.add_text("KNN precision", str(precision_score(y_val, y_pred_knn, average=None)), fold + 1)
+                print(f"KNN recall: {recall_score(y_val, y_pred_knn, average=None)}")
+                writer.add_text("KNN recall", str(recall_score(y_val, y_pred_knn, average=None)), fold + 1)
+
+                print("\n")
+                print(f"Logreg acc {logreg_validation_accuracy}")
                 writer.add_scalar("Logreg acc", logreg_validation_accuracy, fold + 1)
+                print(f"Logreg precision: {precision_score(y_val, y_pred_logreg, average=None)}")
+                writer.add_text("Logreg precision", str(precision_score(y_val, y_pred_logreg, average=None)), fold + 1)
+                print(f"Logreg recall: {recall_score(y_val, y_pred_logreg, average=None)}")
+                writer.add_text("Logreg recall", str(recall_score(y_val, y_pred_logreg, average=None)), fold + 1)
+
+                print("\n")
+                print(f"ET acc {et_validation_accuracy}")
                 writer.add_scalar("ET acc", et_validation_accuracy, fold + 1)
+                print(f"ET precision: {precision_score(y_val, y_pred_et, average=None)}")
+                writer.add_text("ET precision", str(precision_score(y_val, y_pred_et, average=None)), fold + 1)
+                print(f"ET recall: {recall_score(y_val, y_pred_et, average=None)}")
+                writer.add_text("ET recall", str(recall_score(y_val, y_pred_et, average=None)), fold + 1)
+
+                print("\n")
+                print(f"RF acc: {rf_validation_accuracy}")
                 writer.add_scalar("RF acc", rf_validation_accuracy, fold + 1)
+                print(f"RF precision: {precision_score(y_val, rf_pred, average=None)}")
+                writer.add_text("RF precision", str(precision_score(y_val, rf_pred, average=None)), fold + 1)
+                print(f"RF recall: {recall_score(y_val, rf_pred, average=None)}")
+                writer.add_text("RF recall", str(recall_score(y_val, rf_pred, average=None)), fold + 1)
+
+                print("\n")
+                print(f"SVM acc: {svm_validation_accuracy}")
                 writer.add_scalar("SVM acc", svm_validation_accuracy, fold + 1)
+                print(f"SVM precision: {precision_score(y_val, svm_pred, average=None)}")
+                writer.add_text("SVM precision", str(precision_score(y_val, svm_pred, average=None)), fold + 1)
+                print(f"SVM recall: {recall_score(y_val, svm_pred, average=None)}")
+                writer.add_text("SVM recall", str(recall_score(y_val, svm_pred, average=None)), fold + 1)
+
+                print("\n")
+                print(f"Ensemble acc: {ensemble_validation_accuracy}")
+                writer.add_scalar("Ensemble acc", ensemble_validation_accuracy, fold + 1)
+                print(f"Ensemble precision: {precision_score(y_val, y_pred_ensemble, average=None)}")
+                writer.add_text("Ensemble precision", str(precision_score(y_val, y_pred_ensemble, average=None)), fold + 1)
+                print(f"Ensemble recall: {recall_score(y_val, y_pred_ensemble, average=None)}")
+                writer.add_text("Ensemble recall", str(recall_score(y_val, y_pred_ensemble, average=None)), fold + 1)
     
 
                
@@ -428,22 +479,53 @@ def k_fold_validation(model_name,
                 
                 print("\n")
                 print("WITH RADIOMICS")
-                print(f"KNN acc {knn_validation_accuracy_rad}")
-                print(f"Logreg acc {logreg_validation_accuracy_rad}")
-                print(f"ET acc {et_validation_accuracy_rad}")
-                print(f"RF radiomics acc: {rf_validation_accuracy_rad}")
-                print(f"SVM radiomics acc: {svm_validation_accuracy_rad}")
-                print(f"Ensemble radiomics acc: {ensemble_validation_accuracy_rad}")
+                print(f"KNN acc rad: {knn_validation_accuracy_rad}")
+                writer.add_scalar("KNN acc rad", knn_validation_accuracy_rad, fold + 1)
+                print(f"KNN precision rad: {precision_score(y_val, y_pred_knn_rad, average=None)}")
+                writer.add_text("KNN precision rad", str(precision_score(y_val, y_pred_knn_rad, average=None)), fold + 1)
+                print(f"KNN recall rad: {recall_score(y_val, y_pred_knn_rad, average=None)}")
+                writer.add_text("KNN recall rad", str(recall_score(y_val, y_pred_knn_rad, average=None)), fold + 1)
                 
+                print("\n")
+                print(f"Logreg acc rad: {logreg_validation_accuracy_rad}")
+                writer.add_scalar("Logreg acc rad", logreg_validation_accuracy_rad, fold + 1)
+                print(f"Logreg precision rad: {precision_score(y_val, y_pred_logreg_rad, average=None)}")
+                writer.add_text("Logreg precision rad", str(precision_score(y_val, y_pred_logreg_rad, average=None)), fold + 1)
+                print(f"Logreg recall rad: {recall_score(y_val, y_pred_logreg_rad, average=None)}")
+                writer.add_text("Logreg recall rad", str(recall_score(y_val, y_pred_logreg_rad, average=None)), fold + 1)
 
-                writer.add_scalar("BASELINE Radiomics acc", rf_validation_accuracy_rad, fold + 1)
-                #NN
-                writer.add_scalar("KNN Radiomics acc", knn_validation_accuracy, fold + 1)
-                writer.add_scalar("Logreg Radiomics acc", logreg_validation_accuracy, fold + 1)
-                writer.add_scalar("ET Radiomics acc", et_validation_accuracy, fold + 1)
-                writer.add_scalar("RF Radiomics acc", rf_validation_accuracy, fold + 1)
-                writer.add_scalar("SVM Radiomics acc", svm_validation_accuracy_rad, fold + 1)
-                writer.add_scalar("Ensemble Radiomics acc", ensemble_validation_accuracy_rad, fold + 1)
+                print("\n")
+                print(f"ET acc rad: {et_validation_accuracy_rad}")
+                writer.add_scalar("ET acc rad", et_validation_accuracy_rad, fold + 1)
+                print(f"ET precision rad: {precision_score(y_val, y_pred_et_rad, average=None)}")
+                writer.add_text("ET precision rad", str(precision_score(y_val, y_pred_et_rad, average=None)), fold + 1)
+                print(f"ET recall rad: {recall_score(y_val, y_pred_et_rad, average=None)}")
+                writer.add_text("ET recall rad", str(recall_score(y_val, y_pred_et_rad, average=None)), fold + 1)
+
+                print("\n")
+                print(f"RF acc rad: {rf_validation_accuracy_rad}")
+                writer.add_scalar("RF acc rad", rf_validation_accuracy_rad, fold + 1)
+                print(f"RF precision rad: {precision_score(y_val, rf_pred_rad, average=None)}")
+                writer.add_text("RF precision rad", str(precision_score(y_val, rf_pred_rad, average=None)), fold + 1)
+                print(f"RF recall rad: {recall_score(y_val, rf_pred_rad, average=None)}")
+                writer.add_text("RF recall rad", str(recall_score(y_val, rf_pred_rad, average=None)), fold + 1)
+
+                print("\n")
+                print(f"SVM acc rad: {svm_validation_accuracy_rad}")
+                writer.add_scalar("SVM acc rad", svm_validation_accuracy_rad, fold + 1)
+                print(f"SVM precision rad: {precision_score(y_val, svm_pred_rad, average=None)}")
+                writer.add_text("SVM precision rad", str(precision_score(y_val, svm_pred_rad, average=None)), fold + 1)
+                print(f"SVM recall rad: {recall_score(y_val, svm_pred_rad, average=None)}")
+                writer.add_text("SVM recall rad", str(recall_score(y_val, svm_pred_rad, average=None)), fold + 1)
+
+                print("\n")
+                print(f"Ensemble acc rad: {ensemble_validation_accuracy_rad}")
+                writer.add_scalar("Ensemble acc rad", ensemble_validation_accuracy_rad, fold + 1)
+                print(f"Ensemble precision rad: {precision_score(y_val, y_pred_ensemble_rad, average=None)}")
+                writer.add_text("Ensemble precision rad", str(precision_score(y_val, y_pred_ensemble_rad, average=None)), fold + 1)
+                print(f"Ensemble recall rad: {recall_score(y_val, y_pred_ensemble_rad, average=None)}")
+                writer.add_text("Ensemble recall rad", str(recall_score(y_val, y_pred_ensemble_rad, average=None)), fold + 1)
+
 
 
     #Plot confusion matrix
