@@ -14,8 +14,6 @@ from monai.transforms import (
     RandAffined
 )
 
-IMAGENET_MEAN = [0.485, 0.456, 0.406]
-IMAGENET_STD = [0.229, 0.224, 0.225]
 
 PRE_TRANSFORMS = [
     LoadImaged(keys=["image"], image_only=True, reader="ITKReader"),
@@ -33,8 +31,15 @@ def transforms_selector(transforms_name :str):
         transforms = [
             ScaleIntensityd(keys="image", minv=0.0, maxv=1.0),
             NormalizeIntensityd(keys=["image"], channel_wise=True, nonzero=True),  # Per-channel normalization
-            SpatialPadd(keys=["image"], spatial_size=(-1, 180, -1)), #TA MED DENNE
-            RandFlipd(keys="image", spatial_axis=2, prob=0.5), # FIKS PERMUTE HER
+
+            # FOR CUDA
+            Lambdad(keys=["image"], func=lambda x: x.permute(0,3,2,1)), # SJEKKE AT DET ER RIKTIG,
+            
+            # FOR NOT CUDA
+            #Lambdad(keys=["image"], func=lambda x: x.permute(0,2,1,3)),
+            
+            SpatialPadd(keys=["image"], spatial_size=(180, -1, -1)), 
+            RandFlipd(keys="image", spatial_axis=1, prob=0.5),
             #RandCoarseDropoutd( #decent
             #    keys=["image"], 
             #    holes=5,  # Number of cutout regions
@@ -57,17 +62,17 @@ def transforms_selector(transforms_name :str):
     if transforms_name == "pretrained":
         transforms = [ 
             RepeatChanneld(keys=["image"], repeats=3),
-            Lambdad(keys=["image"], func=lambda x: x.permute(0,3,2,1)), # FIKS RIKTIG PERMUTE
+            
+            # FOR CUDA
+            Lambdad(keys=["image"], func=lambda x: x.permute(0,3,2,1)), # SJEKKE AT DET ER RIKTIG,
+            
+            # FOR NOT CUDA
+            #Lambdad(keys=["image"], func=lambda x: x.permute(0,2,1,3)),
+
             Resized(keys=["image"], spatial_size=[-1, 224, 224]), 
             ScaleIntensityd(keys="image", minv=0.0, maxv=1.0),
-            # LITT USIKKER PÅ DENNE
-            # PRØV EGET DATASET, KOMMER ANN PÅ OM MAN SKAL FINETUNE
-            NormalizeIntensityd(
-            keys=["image"],
-            subtrahend=IMAGENET_MEAN, 
-            divisor=IMAGENET_STD,  
-            channel_wise=True
-            ), 
+            NormalizeIntensityd(keys="image"),
+            RandFlipd(keys="image", spatial_axis=1, prob=0.5),
         ]
 
     train_transforms = PRE_TRANSFORMS + transforms + POST_TRANSFORMS

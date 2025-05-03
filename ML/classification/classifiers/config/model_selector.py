@@ -23,25 +23,23 @@ class CNNWeakRadiomics(nn.Module):
                 param.requires_grad = True
         
         self.fc = nn.Sequential(
-            nn.Linear(3918, num_classes),
-            #nn.ReLU(),
-            #nn.Linear(128, 1)
+            nn.Linear(3918, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_classes)
         )
 
 
     def forward(self, image, radiomics):
         # x is average image'
         batch_size = image.shape[0]
-        #https://www.kaggle.com/code/kanncaa1/long-short-term-memory-with-pytorch
-        images = image.permute(0,1,3,2,4)
         
-        features = self.backbone(images)
+        features = self.backbone(image)
         features = features[-1]
         B, C, D, H, W = features.shape
         features = features.mean(dim=[-1, -2])
         features = features.reshape(B, -1)
         features = features.float()
-        radiomics = radiomics.float()
+        radiomics = radiomics.float().to(features.device)
 
         all_feats = torch.cat([features, radiomics], dim=1)
         out = self.fc(all_feats).squeeze(-1) # SQUEEZE regression
@@ -51,7 +49,6 @@ class CNNWeakRadiomics(nn.Module):
 class CNNWeakModel(nn.Module):
     def __init__(self, num_classes=5):
         super(CNNWeakModel, self).__init__()
-        # Resnet18 feature extraction, Pytorch
         self.backbone = ResNetFeatures(model_name="resnet18", pretrained=True)
         
         # FREEZE LAYERS
@@ -72,19 +69,37 @@ class CNNWeakModel(nn.Module):
         )
 
     def forward(self, images):
-        #https://www.kaggle.com/code/kanncaa1/long-short-term-memory-with-pytorch
-        images = images.permute(0,1,3,2,4)
-
         
-        #images = self.temporal_pool(images)
         features = self.backbone(images)
         features = features[-1]
         B, C, D, H, W = features.shape
         features = features.mean(dim=[-1, -2])
         features = features.reshape(B, -1)
-        #features = features.reshape(B, -1)
         out = self.fc(features).squeeze(-1) # SQUEEZE regression
         return out, features
+
+class Resnet18(nn.Module):
+    def __init__(self, num_classes=5):
+        super().__init__()
+        
+        self.backbone = TorchVisionFCModel(
+            model_name='resnet18',
+            num_classes=num_classes,
+            pretrained=True
+        )
+
+        self.backbone_fc = self.backbone.fc  
+        self.backbone.fc = nn.Identity()     
+
+        self.fc = nn.Sequential(
+            nn.Linear(self.backbone_fc.in_features, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_classes)
+        )
+
+    def forward(self, image):
+        image_features = self.backbone(image).float()
+        return self.fc(image_features)
 
 class Resnet18Radiomics(nn.Module):
     def __init__(self, num_classes=5):
@@ -99,19 +114,16 @@ class Resnet18Radiomics(nn.Module):
         self.backbone_fc = self.backbone.fc  
         self.backbone.fc = nn.Identity()     
 
-        self.fc = nn.Linear(
-            self.backbone_fc.in_features + 846,  # 846 is RADIOMICS DIM
-            num_classes
+        self.fc = nn.Sequential(
+            nn.Linear(self.backbone_fc.in_features + 846, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_classes)
         )
 
     def forward(self, image, radiomics):
-
-        image_features = self.backbone(image)
-
-        radiomics = radiomics.float()
-        image_features = image_features.float()
-
-        combined = torch.cat((image_features, radiomics), dim=1) 
+        image_features = self.backbone(image).float()
+        radiomics = radiomics.float().to(image_features.device)
+        combined = torch.cat((image_features, radiomics), dim=1)
 
         return self.fc(combined)
     
@@ -149,7 +161,6 @@ class CNNTransformerModel(nn.Module):
         # x is average image'
         feature_list = []
         B, C, T, H, W = images.shape
-        images_reshaped = images.permute(0, 2, 1, 3, 4).reshape(B * T, C, H, W)
 
         features = self.backbone(images_reshaped)
         # Reshape back: (B*T, 512) → (B, T, 512)
@@ -197,7 +208,6 @@ class CNNLSTMModel(nn.Module):
         h0 = torch.zeros(self.num_layers, batch_size, self.hidden_dim, device=images.device).requires_grad_()
         c0 = torch.zeros(self.num_layers, batch_size, self.hidden_dim, device=images.device).requires_grad_()
         
-        images = images.permute(0,1,4,3,2)
         #images = self.temporal_pool(images)
         features = self.backbone(images)
         features = features[-1]
@@ -297,12 +307,7 @@ def model_selector(model_name :str, device: torch.device):
         return model
     
     elif model_name.lower() == "resnet18":
-        model = TorchVisionFCModel(
-            model_name='resnet18',
-            num_classes=5,
-            pretrained=True
-        ).to(device)
-        return model
+        return Resnet18().to(device)
     
     elif model_name.lower() == "resnet50":
         model = TorchVisionFCModel(

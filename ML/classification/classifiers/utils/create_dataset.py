@@ -11,13 +11,13 @@ def create_dataset(transforms_name: str,
                    start_frame: int,
                    end_frame: int, 
                    agg: str,
+                   radiomics: bool,
                    test_size: int = 0.2, 
-                   random_state: int = 42, 
+                   random_state: int = 1024, # FIX
                    shuffle: bool = True):
     
-    dataset = get_classification_data(data_dir, data_suffices, radiomics=False)
+    dataset = get_classification_data(data_dir, data_suffices, radiomics=radiomics)
 
-    #scale_radiomics(dataset)
     train_data, test_data = train_test_split(
         dataset,
         test_size=test_size,      
@@ -27,13 +27,12 @@ def create_dataset(transforms_name: str,
 
     train_transforms, val_transforms = transforms_selector(transforms_name) 
     
-    # Check if cache fails
     train_dataset = ClassificationDataset(data_list=train_data, 
                                             start_frame=start_frame, 
                                             end_frame=end_frame,
                                             agg=agg, 
                                             transforms=train_transforms,
-                                            radiomics=False,
+                                            radiomics=radiomics,
                                             train=True
                                             )
     
@@ -43,11 +42,11 @@ def create_dataset(transforms_name: str,
                                             end_frame=end_frame, 
                                             agg=agg, 
                                             transforms=val_transforms, 
-                                            radiomics=False,
+                                            radiomics=radiomics,
                                             train=False
                                             )
 
-    test_dataset.scaler, test_dataset.imputer, test_dataset.top_indices, test_dataset.nan_cols = train_dataset.get_objects()
+    test_dataset.scaler, test_dataset.imputer, test_dataset.nan_cols = train_dataset.get_objects()
 
     sample = train_dataset[0]["image"]
     print(f"Loaded image shape: {sample.shape}")

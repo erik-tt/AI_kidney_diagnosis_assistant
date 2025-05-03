@@ -1,5 +1,5 @@
 import torch
-from monai.data import Dataset
+from monai.data import Dataset, CacheDataset
 from sklearn.preprocessing import StandardScaler
 import numpy as np
 from sklearn.impute import SimpleImputer
@@ -58,6 +58,9 @@ class ClassificationDataset(Dataset):
 
         image = sample["image"]
         label = sample["label"]
+        
+        # 0-index label
+        label = label - 1
 
         # LOAD, IMPUTE AND SCALE RADIOMIC FEATURES
         if self.radiomics:
@@ -69,7 +72,7 @@ class ClassificationDataset(Dataset):
             feature_values = feature_values[:, ~self.nan_cols]
             feature_values = self.imputer.transform(feature_values)
 
-            self.scaler.transform(feature_values)
+            feature_values = self.scaler.transform(feature_values)
             scaled_features = feature_values.squeeze(0)
 
         # NOISY LABEL CREATION

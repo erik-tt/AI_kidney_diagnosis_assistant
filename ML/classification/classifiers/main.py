@@ -63,7 +63,8 @@ def main(params):
                                                         data_suffices=params.data_suffix, 
                                                         start_frame=params.start_frame,
                                                         end_frame=params.end_frame,
-                                                        agg=params.agg)
+                                                        agg=params.agg,
+                                                        radiomics=params.radiomics)
 
         train_dataloader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=True, num_workers=params.num_workers)
         val_dataloader = DataLoader(test_dataset, batch_size=params.batch_size, shuffle=False, num_workers=params.num_workers) 
@@ -77,7 +78,8 @@ def main(params):
             device=device,
             writer=writer,
             epochs_to_save=params.save,
-            model_name=params.model
+            model_name=params.model,
+            radiomics=params.radiomics
         )
         
         writer.close()
@@ -101,6 +103,7 @@ if __name__ == "__main__":
     parser.add_argument("--end_frame", type=int, default=None)
     parser.add_argument("--agg", default="mean") # mean or time_series
     parser.add_argument("--k_fold", type=bool, default=False)
+    parser.add_argument("--radiomics", type=bool, default=False)
 
     args = parser.parse_args()
 

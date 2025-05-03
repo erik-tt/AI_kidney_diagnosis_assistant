@@ -29,10 +29,11 @@ dependencies:
   - pip:
     - labelme==5.6.1
     - SimpleITK
-    - torch==2.6.0
-    - torchvision==0.21.0
+    - torch==2.1.2 
+    - torchvision==0.16.2 
     - xgboost
     - lightgbm
     - pyradiomics
     - opencv-python
     - huggingface_hub
+    - protobuf==3.20.*
