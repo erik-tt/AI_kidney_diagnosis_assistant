@@ -103,7 +103,6 @@ def train(model,
         training_labels.extend(labels.cpu().numpy())
         training_predictions.extend(predicted.cpu().numpy())
 
-
     training_accuracy.append(correct / total) # SKAL PÅ INNSIDEN?
 
     return np.mean(training_losses), np.mean(training_accuracy)
@@ -198,11 +197,13 @@ def train_loop(model,
     
     writer.flush()
 
-def train_model(model, dataloader, optimizer, loss_function, device, radiomics = False):
+def train_model(model, dataloader, optimizer, loss_function, device, l1_lambda = 1e-3, radiomics = False):
     model.train()
+
     for batch in tqdm(dataloader):
         images, labels, noisy_label, radiomic_feats = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.float32), batch["radiomics"].to(device)
         optimizer.zero_grad()
+
 
         if radiomics:
             outputs = model(images, radiomic_feats)
@@ -212,11 +213,9 @@ def train_model(model, dataloader, optimizer, loss_function, device, radiomics =
         if isinstance(outputs, tuple):
             outputs, features = outputs
 
-
         loss = loss_function(outputs, labels)
 
         # L1 REGULARIZATION
-        l1_lambda = 1e-3
         l1_norm = sum(p.abs().sum() for p in model.fc.parameters())
         loss = loss + l1_lambda * l1_norm
         
@@ -231,7 +230,7 @@ def k_fold_validation(model_name,
                       writer: SummaryWriter,
                       transforms_name: str,
                       num_workers: int,
-                      splits: int = 5):
+                      splits: int = 10):
     
     
     skf = StratifiedKFold(n_splits=splits, shuffle=True, random_state=42)
@@ -257,17 +256,20 @@ def k_fold_validation(model_name,
     train_transforms_baseline, val_transforms_baseline = transforms_selector("pretrained")
     
     labels = np.array([sample["label"] for sample in dataset])
+
     for fold, (train_idx, val_idx) in enumerate(skf.split(np.zeros(len(labels)), labels)):
     
         
         ## MODELS TO TEST
         model = model_selector(model_name, device)
+        model_weak = model_selector(model_name, device)
         model_radiomics = model_selector("cnnweakradiomics", device)
         model_baseline = model_selector("resnet18", device)
         model_baseline_radiomics = model_selector("resnet18radiomics", device)
 
         loss_function = torch.nn.CrossEntropyLoss() 
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001) 
+        optimizer_weak = torch.optim.Adam(model_weak.parameters(), lr=0.001) 
         optimizer_radiomics = torch.optim.Adam(model_radiomics.parameters(), lr=0.001) 
         optimizer_baseline = torch.optim.Adam(model_baseline.parameters(), lr=0.001)
         optimizer_baseline_radiomics = torch.optim.Adam(model_baseline_radiomics.parameters(), lr=0.001)
@@ -328,7 +330,7 @@ def k_fold_validation(model_name,
 
         ## TRAIN BASELINE
         print("\n TRAINING BASELINE")
-        for epoch in range(12): # HVOR MANGE EPOKER?
+        for epoch in range(10): # HVOR MANGE EPOKER?
             train_model(model_baseline, train_dataloader_baseline, optimizer_baseline, loss_function, device)
         
         ## EVAL BASELINE
@@ -338,7 +340,7 @@ def k_fold_validation(model_name,
         
         ## TRAIN BASELINE WITH RADIOMICS
         print("\n TRAINING BASELINE WITH RADIOMICS")
-        for epoch in range(12):
+        for epoch in range(10):
             train_model(model_baseline_radiomics, train_dataloader_baseline, optimizer_baseline_radiomics, loss_function, device, radiomics=True)
         
         ## EVAL BASELINE
@@ -346,42 +348,48 @@ def k_fold_validation(model_name,
         model_baseline_radiomics.eval()
         _, accuracy_baseline_radiomics, _, precision_baseline_radiomics, recall_baseline_radiomics = validate(model_baseline_radiomics, loss_function, val_dataloader_baseline, device, optimizer_baseline_radiomics, epoch, radiomics = True) 
 
-        
-        X_train, y_train = [], []
-        X_val, y_val = [], []
-        
-        X_train_radiomics, X_val_radiomics = [], []
-        
+        print("\n TRAINING 3D BASELINE")
+        for epoch in range(10):
+            train_model(model, train_dataloader, optimizer, loss_function, device)
+
+        print("\n EVALUATE 3D BASELINE")
+        model.eval()
+        _, accuracy_3d_nn, _, precision_3d_nn, recall_3d_nn = validate(model, loss_function, val_dataloader, device, optimizer, epoch) 
+
+        print("\n TRAINING 3D BASELINE RADIOMICS")
+        for epoch in range(10):
+            train_model(model_radiomics, train_dataloader, optimizer_radiomics, loss_function, device, radiomics=True)
+
+        print("\n EVALUATE 3D BASELINE WITH RADIOMICS")
+        model_radiomics.eval()
+        _, accuracy_3d_nn_radiomics, _, precision_3d_nn_radiomics, recall_3d_nn_radiomics = validate(model_radiomics, loss_function, val_dataloader, device, optimizer_radiomics, epoch, radiomics=True) 
+
+        print("\n TRAINING 3D BASELINE")
         for epoch in range(epochs):
             print("-" * 10)
             print(f"epoch {epoch + 1}/{epochs}")
-
+            X_train, y_train = [], []
+            X_val, y_val = [], []
+            
+            X_train_radiomics, X_val_radiomics = [], []
+            
             if epoch != epochs - 1:
                 # TRAIN 3D CNN
-                print("\n TRAINING 3D BASELINE")
-                train_model(model, train_dataloader, optimizer, loss_function, device)
-                
-                print("\n TRAINING 3D BASELINE WITH RADIOMICS")
-                train_model(model_radiomics, train_dataloader, optimizer_radiomics, loss_function, device, radiomics=True)
+                train_model(model_weak, train_dataloader, optimizer_weak, loss_function, device, l1_lambda=0)
             else:
                 # EVAL
 
-                ## EVAL RADIOMICS MODEL
-
-                print("\n EVALUATE 3D BASELINE WITH RADIOMICS")
-                _, accuracy_radiomics, _, _, _ = validate(model_radiomics, loss_function, val_dataloader, device, optimizer_radiomics, epoch, radiomics=True) 
-
-                print("\n EVALUATE 3D BASELINE")
+                print("\n EVALUATE 3D BASELINE WEAK LEARNERS")
                 ## EVAL MODELS
-                model.eval()
-                model.backbone.eval()
-                for param in model.backbone.parameters():
+                model_weak.eval()
+                model_weak.backbone.eval()
+                for param in model_weak.backbone.parameters():
                     param.requires_grad = False
                 with torch.no_grad():
                     # TRAIN FEATURES
                     for batch in tqdm(feature_dataloader):
                         images, labels, noisy_label, radiomics = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.float32), batch["radiomics"]
-                        outputs, features = model(images)
+                        outputs, features = model_weak(images)
 
                         features = features.detach().cpu().numpy() 
                         radiomics = radiomics.detach().cpu().numpy() if torch.is_tensor(radiomics) else radiomics 
@@ -392,21 +400,9 @@ def k_fold_validation(model_name,
                         X_train_radiomics.append(combined_features)
                     
                     #VAL FEATURES
-                    total = 0
-                    correct = 0
-                    nn_predicted_fold = []
                     for batch in tqdm(val_dataloader):
                         img, label, noisy_label, radiomics = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.long), batch["radiomics"]
-                        outputs, features = model(img)
-
-                        # FOR NEURAL NETWORK PREDS
-                        _, predicted = torch.max(outputs.data, 1)
-                        nn_conf_matr_pred.extend(predicted.tolist())
-                        nn_predicted_fold.extend(predicted.tolist())
-                        nn_conf_matr_labels.extend(label.tolist())
-
-                        total += label.size(0)
-                        correct += (predicted == label).sum().item()
+                        outputs, features = model_weak(img)
 
                         features = features.detach().cpu().numpy() 
                         radiomics = radiomics.detach().cpu().numpy() if torch.is_tensor(radiomics) else radiomics 
@@ -416,8 +412,6 @@ def k_fold_validation(model_name,
                         y_val.append(label.cpu().numpy())  
                         X_val_radiomics.append(combined_features)
                 
-
-                neural_network_acc = correct / total
 
                 X_train = np.concatenate(X_train, axis=0)  
                 y_train = np.concatenate(y_train, axis=0) 
@@ -439,15 +433,15 @@ def k_fold_validation(model_name,
                 X_train_radiomics = scaler2.fit_transform(X_train_radiomics) # SCALER radiomics to ganger nå
                 X_val_radiomics = scaler2.transform(X_val_radiomics)
 
-                rf_validation_accuracy, rf_pred, svm_validation_accuracy, svm_pred, y_pred_knn, y_pred_logreg, y_pred_ensemble, knn_validation_accuracy, logreg_validation_accuracy, et_validation_accuracy, y_pred_et, ensemble_validation_accuracy = train_models(X_train, y_train, X_val, y_val)
+                rf_validation_accuracy, rf_pred, svm_validation_accuracy, svm_pred, y_pred_logreg, y_pred_ensemble, logreg_validation_accuracy, et_validation_accuracy, y_pred_et, ensemble_validation_accuracy = train_models(X_train, y_train, X_val, y_val)
                 
                 conf_matr_labels.extend(y_val)
                 rf_conf_matr_pred.extend(rf_pred)
                 svm_conf_matr_pred.extend(svm_pred)
-                knn_conf_matr_pred.extend(y_pred_knn)
                 logreg_conf_matr_pred.extend(y_pred_logreg)
                 ensemble_conf_matr_pred.extend(y_pred_ensemble)
                 et_conf_matr_pred.extend(y_pred_et)
+
 
                 #Eval scores
                 print(f"BASELINE acc: {accuracy_baseline}")
@@ -457,28 +451,28 @@ def k_fold_validation(model_name,
                 print(f"Baseline recall: {precision_baseline}")
                 writer.add_text("Baseline recall", str(recall_baseline), fold + 1)
 
-                print(f"BASELINE acc: {accuracy_baseline_radiomics}")
-                writer.add_scalar("BASELINE acc", accuracy_baseline_radiomics, fold + 1)
-                print(f"Baseline precision: {precision_baseline_radiomics}")
-                writer.add_text("Baseline precision", str(precision_baseline_radiomics), fold + 1)
-                print(f"Baseline recall: {precision_baseline_radiomics}")
-                writer.add_text("Baseline recall", str(recall_baseline_radiomics), fold + 1)
+                print(f"BASELINE RADIOMICS acc: {accuracy_baseline_radiomics}")
+                writer.add_scalar("BASELINE RADIOMICS acc", accuracy_baseline_radiomics, fold + 1)
+                print(f"Baseline RADIOMICS precision: {precision_baseline_radiomics}")
+                writer.add_text("Baseline RADIOMICS precision", str(precision_baseline_radiomics), fold + 1)
+                print(f"Baseline RADIOMICS recall: {precision_baseline_radiomics}")
+                writer.add_text("Baseline RADIOMICS recall", str(recall_baseline_radiomics), fold + 1)
 
                 print("\n")
-                print(f"NN acc: {neural_network_acc}")
-                writer.add_scalar("NN acc",neural_network_acc, fold + 1)
-                print(f"NN precision: {precision_score(y_val, nn_predicted_fold, average=None)}")
-                writer.add_text("NN precision", str(precision_score(y_val, nn_predicted_fold, average=None)), fold + 1)
-                print(f"NN recall: {recall_score(y_val, nn_predicted_fold, average=None)}")
-                writer.add_text("NN recall", str(recall_score(y_val, nn_predicted_fold, average=None)), fold + 1)
+                print(f"BASELINE 3D NN acc: {accuracy_3d_nn}")
+                writer.add_scalar("BASELINE 3D acc", accuracy_3d_nn, fold + 1)
+                print(f"Baseline 3D precision: {precision_3d_nn}")
+                writer.add_text("Baseline 3D precision", str(precision_3d_nn), fold + 1)
+                print(f"Baseline 3D recall: {recall_3d_nn}")
+                writer.add_text("Baseline 3D recall", str(recall_3d_nn), fold + 1)
 
                 print("\n")
-                print(f"KNN acc {knn_validation_accuracy}")
-                writer.add_scalar("KNN acc", knn_validation_accuracy, fold + 1)
-                print(f"KNN precision: {precision_score(y_val, y_pred_knn, average=None)}")
-                writer.add_text("KNN precision", str(precision_score(y_val, y_pred_knn, average=None)), fold + 1)
-                print(f"KNN recall: {recall_score(y_val, y_pred_knn, average=None)}")
-                writer.add_text("KNN recall", str(recall_score(y_val, y_pred_knn, average=None)), fold + 1)
+                print(f"BASELINE 3D NN RADIOMICS acc: {accuracy_3d_nn_radiomics}")
+                writer.add_scalar("BASELINE 3D RADIOMICS acc", accuracy_3d_nn_radiomics, fold + 1)
+                print(f"Baseline 3D RADIOMICS precision: {precision_3d_nn_radiomics}")
+                writer.add_text("Baseline 3D RADIOMICS precision", str(precision_3d_nn_radiomics), fold + 1)
+                print(f"Baseline 3D RADIOMICS recall: {recall_3d_nn_radiomics}")
+                writer.add_text("Baseline 3D RADIOMICS recall", str(recall_3d_nn_radiomics), fold + 1)
 
 
                 print("\n")
@@ -522,25 +516,17 @@ def k_fold_validation(model_name,
                 print(f"Ensemble recall: {recall_score(y_val, y_pred_ensemble, average=None)}")
                 writer.add_text("Ensemble recall", str(recall_score(y_val, y_pred_ensemble, average=None)), fold + 1)
 
-               
-                rf_validation_accuracy_rad, rf_pred_rad, svm_validation_accuracy_rad, svm_pred_rad, y_pred_knn_rad, y_pred_logreg_rad, y_pred_ensemble_rad, knn_validation_accuracy_rad, logreg_validation_accuracy_rad, et_validation_accuracy_rad, y_pred_et_rad, ensemble_validation_accuracy_rad = train_models(X_train_radiomics, y_train, X_val_radiomics, y_val)
+                rf_validation_accuracy_rad, rf_pred_rad, svm_validation_accuracy_rad, svm_pred_rad, y_pred_logreg_rad, y_pred_ensemble_rad, logreg_validation_accuracy_rad, et_validation_accuracy_rad, y_pred_et_rad, ensemble_validation_accuracy_rad = train_models(X_train_radiomics, y_train, X_val_radiomics, y_val)
                 
                 #NN
                 rf_conf_matr_pred_rad.extend(rf_pred_rad)
                 svm_conf_matr_pred_rad.extend(svm_pred_rad)
-                knn_conf_matr_pred_rad.extend(y_pred_knn_rad)
                 logreg_conf_matr_pred_rad.extend(y_pred_logreg_rad)
                 ensemble_conf_matr_pred_rad.extend(y_pred_ensemble_rad)
                 et_conf_matr_pred_rad.extend(y_pred_et_rad)
                 
                 print("\n")
                 print("WITH RADIOMICS")
-                print(f"KNN acc rad: {knn_validation_accuracy_rad}")
-                writer.add_scalar("KNN acc rad", knn_validation_accuracy_rad, fold + 1)
-                print(f"KNN precision rad: {precision_score(y_val, y_pred_knn_rad, average=None)}")
-                writer.add_text("KNN precision rad", str(precision_score(y_val, y_pred_knn_rad, average=None)), fold + 1)
-                print(f"KNN recall rad: {recall_score(y_val, y_pred_knn_rad, average=None)}")
-                writer.add_text("KNN recall rad", str(recall_score(y_val, y_pred_knn_rad, average=None)), fold + 1)
                 
                 print("\n")
                 print(f"Logreg acc rad: {logreg_validation_accuracy_rad}")
@@ -586,14 +572,12 @@ def k_fold_validation(model_name,
     #Plot confusion matrix
     #Without rad features
     writer.add_figure("3D CNN Feature Extractor + NN Classifier", plot_confusion_matrix(nn_conf_matr_labels, nn_conf_matr_pred, "3D CNN Feature Extractor + NN Classifier"))
-    writer.add_figure("3D CNN Feature Extractor + KNN", plot_confusion_matrix(conf_matr_labels, knn_conf_matr_pred, "3D CNN Feature Extractor + KNN"))
     writer.add_figure("3D CNN Feature Extractor + Logistic Regression Classifier", plot_confusion_matrix(conf_matr_labels, logreg_conf_matr_pred, "3D CNN Feature Extractor + Logistic Regression Classifier"))
     writer.add_figure("3D CNN Feature Extractor +  Extra Trees Classifier",  plot_confusion_matrix(conf_matr_labels, et_conf_matr_pred, "3D CNN Feature Extractor + Extra Trees Classifier"))
     writer.add_figure("3D CNN Feature Extractor + RF classifier",  plot_confusion_matrix(conf_matr_labels, rf_conf_matr_pred,  "3D CNN Feature Extractor + RF classifier"))
     writer.add_figure("3D CNN Feature Extractor + SVM classifier",  plot_confusion_matrix(conf_matr_labels, svm_conf_matr_pred,  "3D CNN Feature Extractor + SVM Classifier"))
 
     #With rad features
-    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + KNN", plot_confusion_matrix(conf_matr_labels, knn_conf_matr_pred_rad, "3D CNN Feature Extractor + KNN"))
     writer.add_figure("3D CNN Feature Extractor With Radiomic Features + Logistic Regression Classifier", plot_confusion_matrix(conf_matr_labels, logreg_conf_matr_pred_rad, "3D CNN Feature Extractor + Logistic Regression Classifier"))
     writer.add_figure("3D CNN Feature Extractor With Radiomic Features +  Extra Trees Classifier",  plot_confusion_matrix(conf_matr_labels, et_conf_matr_pred_rad, "3D CNN Feature Extractor + Extra Trees Classifier"))
     writer.add_figure("3D CNN Feature Extractor With Radiomic Features + RF classifier",  plot_confusion_matrix(conf_matr_labels, rf_conf_matr_pred_rad,  "3D CNN Feature Extractor + RF classifier"))
@@ -619,32 +603,17 @@ def train_models(X_train, y_train, X_val, y_val):
     y_pred_svm = svm.predict(X_val)
     svm_validation_accuracy = accuracy_score(y_val, y_pred_svm)
 
-    knn_model = KNeighborsClassifier(n_neighbors=7)
-    ensemble_knn = BaggingClassifier(
-        estimator=knn_model,
-        n_estimators=500,              
-        max_samples=1.0,              
-        max_features=1.0,             
-        bootstrap=False,               
-        bootstrap_features=True,      
-        random_state=42,
-    )
-    ensemble_knn.fit(X_train, y_train)
-    y_pred_knn = ensemble_knn.predict(X_val)
-    knn_validation_accuracy = accuracy_score(y_val, y_pred_knn)
-
-    logreg_model = LogisticRegression(solver='liblinear', max_iter=500, C=0.01) # use elasticnet penalty
+    logreg_model = LogisticRegression(solver='liblinear', max_iter=500, C=0.01, random_state=42) # use elasticnet penalty
     logreg_model.fit(X_train, y_train)
     y_pred_logreg = logreg_model.predict(X_val)
     logreg_validation_accuracy = accuracy_score(y_val, y_pred_logreg)
 
 
-    svm_model_prob = SVC(kernel="linear", C=0.001, probability=True) 
+    svm_model_prob = SVC(kernel="linear", C=0.001, probability=True, random_state=42) 
 
     voting_clf = VotingClassifier(
         estimators=[
             ('svc', svm_model_prob),
-            ('knn', ensemble_knn),
             ('logreg', logreg_model),
             ('rf', rf_model),
             ('et', et_model),
@@ -656,4 +625,4 @@ def train_models(X_train, y_train, X_val, y_val):
     y_pred_ensemble = voting_clf.predict(X_val)
     ensemble_validation_accuracy = accuracy_score(y_val, y_pred_ensemble)
 
-    return rf_validation_accuracy, y_pred_rf, svm_validation_accuracy, y_pred_svm, y_pred_knn, y_pred_logreg, y_pred_ensemble, knn_validation_accuracy, logreg_validation_accuracy, et_validation_accuracy, y_pred_et, ensemble_validation_accuracy
+    return rf_validation_accuracy, y_pred_rf, svm_validation_accuracy, y_pred_svm, y_pred_logreg, y_pred_ensemble, logreg_validation_accuracy, et_validation_accuracy, y_pred_et, ensemble_validation_accuracy
