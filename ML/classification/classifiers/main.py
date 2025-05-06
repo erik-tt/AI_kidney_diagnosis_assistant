@@ -54,7 +54,7 @@ def main(params):
                       writer=writer,
                       transforms_name=params.transforms,
                       num_workers=params.num_workers,
-                      splits=5)
+                      splits=10)
     else:
         model = model_selector(params.model, device)
 
