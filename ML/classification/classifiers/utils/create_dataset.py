@@ -13,7 +13,7 @@ def create_dataset(transforms_name: str,
                    agg: str,
                    radiomics: bool,
                    test_size: int = 0.2, 
-                   random_state: int = 1024, # FIX
+                   random_state: int = 42, # FIX
                    shuffle: bool = True):
     
     dataset = get_classification_data(data_dir, data_suffices, radiomics=radiomics)
