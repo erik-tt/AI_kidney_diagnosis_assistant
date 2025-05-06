@@ -63,6 +63,7 @@ def transforms_selector(transforms_name :str):
     if transforms_name == "baseline":
         transforms = [
             RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
+            RandRotated(keys=["image"], range_x= np.pi / 12, prob=0.5),
         ]
     elif transforms_name == "config_1":
         transforms = [

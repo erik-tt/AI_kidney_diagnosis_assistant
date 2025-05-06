@@ -61,7 +61,9 @@ def train(model,
         images, labels = batch_data["image"].to(device), batch_data["label"].to(device) 
         optimizer.zero_grad()
         outputs = model(images)
-
+        #Unet++ returns a list and not a tensor
+        if (isinstance(outputs, list)):
+             outputs = torch.Tensor(outputs[-1])
         loss = loss_function(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -107,6 +109,8 @@ def validate(model,
                 images, labels = batch["image"].to(device), batch["label"].to(device)
 
                 outputs = model(images)
+                if (isinstance(outputs, list)):
+                    outputs = torch.Tensor(outputs[-1])
 
                 loss = loss_function(outputs, labels)
                 validation_losses.append(loss.item())
@@ -128,8 +132,6 @@ def validate(model,
                     writer.add_figure("ground truth vs output",
                         plot_output(outputs[0], images[0], labels[0]), #val outputs convert aswell
                         global_step = epoch)
-
-                    #Save checkpoint
                     torch.save({
                         'epoch': epoch,
                         'model_state_dict': model.state_dict(),
@@ -168,6 +170,8 @@ def train_loop(model,
 
     loss_function = DiceCELoss(include_background=False, to_onehot_y=True, softmax=True)
     optimizer = torch.optim.Adam(model.parameters())
+    best_dice = -1
+    best_dice_epoch = -1
 
     for epoch in range(epochs):
         print("-" * 10)
@@ -190,6 +194,19 @@ def train_loop(model,
                                                 epochs_to_save,
                                                 model_name,
                                                 )
+        if validation_dice > best_dice:
+            best_dice = validation_dice
+            best_dice_epoch = epoch + 1
+            #Save checkpoint
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                },f"segmentation_models/best_{model_name}.pth")
+            
+            writer.add_scalar("best dice", best_dice)
+            writer.add_scalar("best dice epoch", best_dice_epoch)
+
         
         print(f"Training loss: {np.mean(training_loss)}")
         print(f"Validation loss: {np.mean(validation_loss)}")
@@ -198,6 +215,8 @@ def train_loop(model,
         print(f"Validation IoU: {validation_iou}")
         print(f"Validation precision: {validation_precision}")
         print(f"Validation recall: {validation_recall}")
+        print(f"Best dice: {best_dice}")
+        print(f"Best dice epoch: {best_dice_epoch}")
         
         writer.add_scalar("Training loss", np.mean(training_loss), epoch)
         writer.add_scalar("Validation loss", np.mean(validation_loss), epoch)
@@ -228,7 +247,7 @@ def k_fold_validation(model_name,
         loss_function = DiceCELoss(include_background=False, to_onehot_y=True, softmax=True)
         optimizer = torch.optim.Adam(model.parameters())
 
-        print(f"Fold {fold+1}/{splits}")
+        print(f"Iteration {fold+1}/{splits}")
 
         train_set = [dataset[i] for i in train_idx]
         val_set = [dataset[i] for i in val_idx]

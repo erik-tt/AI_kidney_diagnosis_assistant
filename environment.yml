@@ -13,6 +13,8 @@ dependencies:
   - matplotlib
   - seaborn
   - statsmodels
+  - scipy
+  - scikit-posthocs
   - tqdm
   - imageio
   - nibabel=5.3.2

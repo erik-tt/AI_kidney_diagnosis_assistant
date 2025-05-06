@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+import random
 from monai.data import DataLoader, pad_list_data_collate
 from train_loops.train import train_loop, k_fold_validation
 from config.model_selector import model_selector
@@ -96,9 +97,9 @@ if __name__ == "__main__":
     parser.add_argument("--transforms", default="pretrained")
     parser.add_argument("--batch_size", type=int, default=6)
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--num_epochs", type=int, default=10)
+    parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--lr", type=int, default=0.001)
-    parser.add_argument("--save",type=int, default=2) #TODO:implement save
+    parser.add_argument("--save",type=int, default=2)
     parser.add_argument("--start_frame", type=int, default=0)
     parser.add_argument("--end_frame", type=int, default=None)
     parser.add_argument("--agg", default="mean") # mean or time_series

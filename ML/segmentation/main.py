@@ -9,9 +9,12 @@ from datetime import datetime
 import random
 import numpy as np
 import os
+import monai
+#from torchinfo import summary
 
 def main(params):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"use cuda: {torch.cuda.is_available()}")
 
     #Random seed locking (42 is the answer)
     torch.manual_seed(42)
@@ -19,12 +22,14 @@ def main(params):
     random.seed(42)
     torch.cuda.manual_seed(42)
     torch.cuda.manual_seed_all(42)
-
+    monai.utils.set_determinism(42) 
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs("./runs", exist_ok=True)
     os.makedirs("./segmentation_models", exist_ok=True)
-    log_dir = os.path.join("./runs", f"experiment_{timestamp}")
+    log_dir = os.path.join("./runs", f"{params.model}_experiment_{timestamp}")
     writer = SummaryWriter(log_dir=log_dir)
 
     writer.add_text("Model", f"Model: {params.model}", global_step=0)
@@ -35,6 +40,9 @@ def main(params):
     writer.add_text("Data suffix", f"Data directories: {params.data_suffix}", global_step=0)
 
     model = model_selector(params.model, device)
+    
+    #summary(model, input_size=(4, 1, 128, 128), verbose = 1, depth=40)
+    
     
     if params.k_fold:
         data = create_dataset_kfold(params.data_dir, params.data_suffix)
@@ -64,22 +72,22 @@ def main(params):
             epochs_to_save=params.save,
             model_name=params.model
         )
-
         writer.close()
+
 if __name__ == "__main__":
     parser = ArgumentParser()
 
+
     parser.add_argument("--data_dir", nargs='+', default=["drsprg", "drsbru"], help="Allowed data directories")
     parser.add_argument("--data_suffix", nargs='+', default=["POST"], help="Allowed suffices")
-    parser.add_argument("--transforms", default="config_1")
-    parser.add_argument("--model", default="UNet")
+    parser.add_argument("--transforms", default="baseline")
+    parser.add_argument("--model", default="unet")
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--num_epochs", type=int, default=2)
+    parser.add_argument("--num_epochs", type=int, default=50)
     parser.add_argument("--lr", type=int, default=0.001)
     parser.add_argument("--save",type=int, default=2)
-    parser.add_argument("--k_fold",type=int, default=None)
-
+    parser.add_argument("--k_fold",type=int, default = 10)
     args = parser.parse_args()
 
     main(args)
