@@ -23,7 +23,7 @@ class CNNWeakRadiomics(nn.Module):
                 param.requires_grad = True
         
         self.fc = nn.Sequential(
-            nn.Linear(3918, 64),
+            nn.Linear(4011, 64),
             nn.ReLU(),
             nn.Linear(64, num_classes)
         )
@@ -40,7 +40,7 @@ class CNNWeakRadiomics(nn.Module):
         features = features.reshape(B, -1)
         features = features.float()
         radiomics = radiomics.float().to(features.device)
-
+        
         all_feats = torch.cat([features, radiomics], dim=1)
         out = self.fc(all_feats).squeeze(-1) # SQUEEZE regression
         # RETURNERE RADIOMIC FEATURES HERE?
@@ -71,6 +71,7 @@ class CNNWeakModel(nn.Module):
     def forward(self, images):
         
         features = self.backbone(images)
+        
         features = features[-1]
         B, C, D, H, W = features.shape
         features = features.mean(dim=[-1, -2])
@@ -115,7 +116,7 @@ class Resnet18Radiomics(nn.Module):
         self.backbone.fc = nn.Identity()     
 
         self.fc = nn.Sequential(
-            nn.Linear(self.backbone_fc.in_features + 846, 64),
+            nn.Linear(self.backbone_fc.in_features + 939, 64),
             nn.ReLU(),
             nn.Linear(64, num_classes)
         )
