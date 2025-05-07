@@ -32,12 +32,12 @@ def transforms_selector(transforms_name :str):
             NormalizeIntensityd(keys=["image"], channel_wise=True, nonzero=True),
 
             # FOR CUDA
-            Lambdad(keys=["image"], func=lambda x: x.permute(0,3,2,1)), # SJEKKE AT DET ER RIKTIG,
+            #Lambdad(keys=["image"], func=lambda x: x.permute(0,3,2,1)), # SJEKKE AT DET ER RIKTIG,
             
             # FOR NOT CUDA
-            #Lambdad(keys=["image"], func=lambda x: x.permute(0,2,1,3)),
+            Lambdad(keys=["image"], func=lambda x: x.permute(0,2,1,3)),
             
-            SpatialPadd(keys=["image"], spatial_size=(180, -1, -1)), 
+            SpatialPadd(keys=["image"], spatial_size=(180, -1, -1)),
             RandFlipd(keys="image", spatial_axis=2, prob=0.5),
         ]
 
@@ -47,10 +47,10 @@ def transforms_selector(transforms_name :str):
             NormalizeIntensityd(keys=["image"], channel_wise=True, nonzero=True),
             
             # FOR CUDA
-            Lambdad(keys=["image"], func=lambda x: x.permute(0,3,2,1)), # SJEKKE AT DET ER RIKTIG,
+            #Lambdad(keys=["image"], func=lambda x: x.permute(0,3,2,1)), # SJEKKE AT DET ER RIKTIG,
             
             # FOR NOT CUDA
-            #Lambdad(keys=["image"], func=lambda x: x.permute(0,2,1,3)),
+            Lambdad(keys=["image"], func=lambda x: x.permute(0,2,1,3)),
 
             Resized(keys=["image"], spatial_size=[-1, 224, 224]), 
             RandFlipd(keys="image", spatial_axis=2, prob=0.5),
