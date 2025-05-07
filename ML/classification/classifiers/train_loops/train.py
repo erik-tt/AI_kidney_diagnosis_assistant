@@ -214,14 +214,12 @@ def train_model(model, dataloader, optimizer, loss_function, device, l1_lambda =
                 plt.imshow(images[0, 0, :, :].cpu().numpy(), cmap='gray')
                 plt.axis('off')
                 plt.savefig('control_image.png', bbox_inches='tight', pad_inches=0)
-                plt.show()
                 saved = True
 
             if images.ndim == 5 :
                 plt.imshow(images[0,0, 100, :, :].cpu().numpy(), cmap='gray')
                 plt.axis('off')
                 plt.savefig('control_image.png', bbox_inches='tight', pad_inches=0)
-                plt.show()
                 saved == True
 
 
@@ -259,17 +257,19 @@ def k_fold_validation(model_name,
 
     nn_conf_matr_labels = []
     conf_matr_labels = []
+
+    baseline_matr_pred = []
     nn_conf_matr_pred = []
     rf_conf_matr_pred = []
     svm_conf_matr_pred = []
-    knn_conf_matr_pred = []
     logreg_conf_matr_pred = []
     ensemble_conf_matr_pred = []
     et_conf_matr_pred = []
 
+    baseline_matr_pred_rad = []
+    nn_conf_matr_pred_rad = []
     rf_conf_matr_pred_rad = []
     svm_conf_matr_pred_rad = []
-    knn_conf_matr_pred_rad = []
     logreg_conf_matr_pred_rad = []
     ensemble_conf_matr_pred_rad = []
     et_conf_matr_pred_rad = []
@@ -358,7 +358,7 @@ def k_fold_validation(model_name,
         ## EVAL BASELINE
         print("\n EVALUATE BASELINE")
         model_baseline.eval()
-        _, accuracy_baseline, _, precision_baseline, recall_baseline = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)    
+        _, accuracy_baseline, baseline_pred, precision_baseline, recall_baseline = validate(model_baseline, loss_function, val_dataloader_baseline, device, optimizer_baseline, epoch)    
         
         ## TRAIN BASELINE WITH RADIOMICS
         print("\n TRAINING BASELINE WITH RADIOMICS")
@@ -368,25 +368,25 @@ def k_fold_validation(model_name,
         ## EVAL BASELINE
         print("\n EVALUATE BASELINE RADIOMICS")
         model_baseline_radiomics.eval()
-        _, accuracy_baseline_radiomics, _, precision_baseline_radiomics, recall_baseline_radiomics = validate(model_baseline_radiomics, loss_function, val_dataloader_baseline, device, optimizer_baseline_radiomics, epoch, radiomics = True) 
+        _, accuracy_baseline_radiomics, baseline_pred_rad, precision_baseline_radiomics, recall_baseline_radiomics = validate(model_baseline_radiomics, loss_function, val_dataloader_baseline, device, optimizer_baseline_radiomics, epoch, radiomics = True) 
 
-        print("\n TRAINING 3D BASELINE")
+        print("\n TRAINING 3D CNN + NN")
         for epoch in range(10):
             train_model(model, train_dataloader, optimizer, loss_function, device)
 
-        print("\n EVALUATE 3D BASELINE")
+        print("\n EVALUATE 3D CNN + NN")
         model.eval()
-        _, accuracy_3d_nn, _, precision_3d_nn, recall_3d_nn = validate(model, loss_function, val_dataloader, device, optimizer, epoch) 
+        _, accuracy_3d_nn, nn_pred, precision_3d_nn, recall_3d_nn = validate(model, loss_function, val_dataloader, device, optimizer, epoch) 
 
-        print("\n TRAINING 3D BASELINE RADIOMICS")
+        print("\n TRAINING 3D CNN + NN RADIOMICS")
         for epoch in range(10):
             train_model(model_radiomics, train_dataloader, optimizer_radiomics, loss_function, device, radiomics=True)
 
-        print("\n EVALUATE 3D BASELINE WITH RADIOMICS")
+        print("\n EVALUATE 3D CNN + NN WITH RADIOMICS")
         model_radiomics.eval()
-        _, accuracy_3d_nn_radiomics, _, precision_3d_nn_radiomics, recall_3d_nn_radiomics = validate(model_radiomics, loss_function, val_dataloader, device, optimizer_radiomics, epoch, radiomics=True) 
+        _, accuracy_3d_nn_radiomics, nn_pred_rad, precision_3d_nn_radiomics, recall_3d_nn_radiomics = validate(model_radiomics, loss_function, val_dataloader, device, optimizer_radiomics, epoch, radiomics=True) 
 
-        print("\n TRAINING 3D BASELINE")
+        print("\n TRAINING 3D CNN")
         for epoch in range(epochs):
             print("-" * 10)
             print(f"epoch {epoch + 1}/{epochs}")
@@ -454,6 +454,8 @@ def k_fold_validation(model_name,
                 rf_validation_accuracy, rf_pred, svm_validation_accuracy, svm_pred, y_pred_logreg, y_pred_ensemble, logreg_validation_accuracy, et_validation_accuracy, y_pred_et, ensemble_validation_accuracy = train_models(X_train, y_train, X_val, y_val)
                 
                 conf_matr_labels.extend(y_val)
+                baseline_matr_pred.extend(baseline_pred)
+                nn_conf_matr_pred.extend(nn_pred)
                 rf_conf_matr_pred.extend(rf_pred)
                 svm_conf_matr_pred.extend(svm_pred)
                 logreg_conf_matr_pred.extend(y_pred_logreg)
@@ -469,29 +471,13 @@ def k_fold_validation(model_name,
                 print(f"Baseline recall: {precision_baseline}")
                 writer.add_text("Baseline recall", str(recall_baseline), fold + 1)
 
-                print(f"BASELINE RADIOMICS acc: {accuracy_baseline_radiomics}")
-                writer.add_scalar("BASELINE RADIOMICS acc", accuracy_baseline_radiomics, fold + 1)
-                print(f"Baseline RADIOMICS precision: {precision_baseline_radiomics}")
-                writer.add_text("Baseline RADIOMICS precision", str(precision_baseline_radiomics), fold + 1)
-                print(f"Baseline RADIOMICS recall: {precision_baseline_radiomics}")
-                writer.add_text("Baseline RADIOMICS recall", str(recall_baseline_radiomics), fold + 1)
-
                 print("\n")
-                print(f"BASELINE 3D NN acc: {accuracy_3d_nn}")
-                writer.add_scalar("BASELINE 3D acc", accuracy_3d_nn, fold + 1)
-                print(f"Baseline 3D precision: {precision_3d_nn}")
-                writer.add_text("Baseline 3D precision", str(precision_3d_nn), fold + 1)
-                print(f"Baseline 3D recall: {recall_3d_nn}")
-                writer.add_text("Baseline 3D recall", str(recall_3d_nn), fold + 1)
-
-                print("\n")
-                print(f"BASELINE 3D NN RADIOMICS acc: {accuracy_3d_nn_radiomics}")
-                writer.add_scalar("BASELINE 3D RADIOMICS acc", accuracy_3d_nn_radiomics, fold + 1)
-                print(f"Baseline 3D RADIOMICS precision: {precision_3d_nn_radiomics}")
-                writer.add_text("Baseline 3D RADIOMICS precision", str(precision_3d_nn_radiomics), fold + 1)
-                print(f"Baseline 3D RADIOMICS recall: {recall_3d_nn_radiomics}")
-                writer.add_text("Baseline 3D RADIOMICS recall", str(recall_3d_nn_radiomics), fold + 1)
-
+                print(f"3D CNN + NN acc: {accuracy_3d_nn}")
+                writer.add_scalar("3D CNN + NN acc", accuracy_3d_nn, fold + 1)
+                print(f"3D CNN + NN precision: {precision_3d_nn}")
+                writer.add_text("3D CNN + NN  precision", str(precision_3d_nn), fold + 1)
+                print(f"3D CNN + NN  recall: {recall_3d_nn}")
+                writer.add_text("B3D CNN + NN recall", str(recall_3d_nn), fold + 1)
 
                 print("\n")
                 print(f"Logreg acc {logreg_validation_accuracy}")
@@ -535,8 +521,8 @@ def k_fold_validation(model_name,
                 writer.add_text("Ensemble recall", str(recall_score(y_val, y_pred_ensemble, average=None)), fold + 1)
 
                 rf_validation_accuracy_rad, rf_pred_rad, svm_validation_accuracy_rad, svm_pred_rad, y_pred_logreg_rad, y_pred_ensemble_rad, logreg_validation_accuracy_rad, et_validation_accuracy_rad, y_pred_et_rad, ensemble_validation_accuracy_rad = train_models(X_train_radiomics, y_train, X_val_radiomics, y_val)
-                
-                #NN
+                baseline_matr_pred_rad.extend(baseline_matr_pred_rad)
+                nn_conf_matr_pred_rad.extend(nn_pred_rad)
                 rf_conf_matr_pred_rad.extend(rf_pred_rad)
                 svm_conf_matr_pred_rad.extend(svm_pred_rad)
                 logreg_conf_matr_pred_rad.extend(y_pred_logreg_rad)
@@ -545,7 +531,22 @@ def k_fold_validation(model_name,
                 
                 print("\n")
                 print("WITH RADIOMICS")
-                
+                print("\n")
+                print(f"BASELINE RADIOMICS acc: {accuracy_baseline_radiomics}")
+                writer.add_scalar("BASELINE RADIOMICS acc", accuracy_baseline_radiomics, fold + 1)
+                print(f"Baseline RADIOMICS precision: {precision_baseline_radiomics}")
+                writer.add_text("Baseline RADIOMICS precision", str(precision_baseline_radiomics), fold + 1)
+                print(f"Baseline RADIOMICS recall: {precision_baseline_radiomics}")
+                writer.add_text("Baseline RADIOMICS recall", str(recall_baseline_radiomics), fold + 1)
+
+                print("\n")
+                print(f"3D CNN + NN RADIOMICS acc: {accuracy_3d_nn_radiomics}")
+                writer.add_scalar("3D CNN + NN  RADIOMICS acc", accuracy_3d_nn_radiomics, fold + 1)
+                print(f"3D CNN + NN  RADIOMICS precision: {precision_3d_nn_radiomics}")
+                writer.add_text("B3D CNN + NN  RADIOMICS precision", str(precision_3d_nn_radiomics), fold + 1)
+                print(f"3D CNN + NN  RADIOMICS recall: {recall_3d_nn_radiomics}")
+                writer.add_text("3D CNN + NN RADIOMICS recall", str(recall_3d_nn_radiomics), fold + 1)
+
                 print("\n")
                 print(f"Logreg acc rad: {logreg_validation_accuracy_rad}")
                 writer.add_scalar("Logreg acc rad", logreg_validation_accuracy_rad, fold + 1)
@@ -589,17 +590,25 @@ def k_fold_validation(model_name,
 
     #Plot confusion matrix
     #Without rad features
-    writer.add_figure("3D CNN Feature Extractor + NN Classifier", plot_confusion_matrix(nn_conf_matr_labels, nn_conf_matr_pred, "3D CNN Feature Extractor + NN Classifier"))
+    #baseline
+    writer.add_figure("BASELINE", plot_confusion_matrix(conf_matr_labels, baseline_pred, "BASELINE"))
+    writer.add_figure("3D CNN Feature Extractor + NN Classifier", plot_confusion_matrix(conf_matr_labels, nn_conf_matr_pred, "3D CNN Feature Extractor + NN Classifier"))
     writer.add_figure("3D CNN Feature Extractor + Logistic Regression Classifier", plot_confusion_matrix(conf_matr_labels, logreg_conf_matr_pred, "3D CNN Feature Extractor + Logistic Regression Classifier"))
     writer.add_figure("3D CNN Feature Extractor +  Extra Trees Classifier",  plot_confusion_matrix(conf_matr_labels, et_conf_matr_pred, "3D CNN Feature Extractor + Extra Trees Classifier"))
     writer.add_figure("3D CNN Feature Extractor + RF classifier",  plot_confusion_matrix(conf_matr_labels, rf_conf_matr_pred,  "3D CNN Feature Extractor + RF classifier"))
     writer.add_figure("3D CNN Feature Extractor + SVM classifier",  plot_confusion_matrix(conf_matr_labels, svm_conf_matr_pred,  "3D CNN Feature Extractor + SVM Classifier"))
+    writer.add_figure("3D CNN Feature Extractor + Ensemble classifier",  plot_confusion_matrix(conf_matr_labels, ensemble_conf_matr_pred,  "3D CNN Feature Extractor + Ensemble Classifier"))
 
     #With rad features
-    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + Logistic Regression Classifier", plot_confusion_matrix(conf_matr_labels, logreg_conf_matr_pred_rad, "3D CNN Feature Extractor + Logistic Regression Classifier"))
-    writer.add_figure("3D CNN Feature Extractor With Radiomic Features +  Extra Trees Classifier",  plot_confusion_matrix(conf_matr_labels, et_conf_matr_pred_rad, "3D CNN Feature Extractor + Extra Trees Classifier"))
-    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + RF classifier",  plot_confusion_matrix(conf_matr_labels, rf_conf_matr_pred_rad,  "3D CNN Feature Extractor + RF classifier"))
-    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + SVM classifier",  plot_confusion_matrix(conf_matr_labels, svm_conf_matr_pred_rad,  "3D CNN Feature Extractor + SVM Classifier"))
+    #baseline
+    writer.add_figure("BASELINE", plot_confusion_matrix(conf_matr_labels, baseline_pred_rad, "BASELINE"))
+    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + NN Classifier", plot_confusion_matrix(conf_matr_labels, nn_conf_matr_pred_rad, "3D CNN Feature Extractor With Radiomic Features + NN Classifier"))
+    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + Logistic Regression Classifier", plot_confusion_matrix(conf_matr_labels, logreg_conf_matr_pred_rad, "3D CNN Feature Extractor With Radiomic Features + Logistic Regression Classifier"))
+    writer.add_figure("3D CNN Feature Extractor With Radiomic Features +  Extra Trees Classifier",  plot_confusion_matrix(conf_matr_labels, et_conf_matr_pred_rad, "3D CNN Feature Extractor With Radiomic Features + Extra Trees Classifier"))
+    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + RF classifier",  plot_confusion_matrix(conf_matr_labels, rf_conf_matr_pred_rad,  "3D CNN Feature Extractor With Radiomic Features + RF classifier"))
+    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + SVM classifier",  plot_confusion_matrix(conf_matr_labels, svm_conf_matr_pred_rad,  "3D CNN Feature Extractor With Radiomic Features + SVM Classifier"))
+    writer.add_figure("3D CNN Feature Extractor With Radiomic Features + Ensemble classifier",  plot_confusion_matrix(conf_matr_labels, ensemble_conf_matr_pred_rad,  "3D CNN Feature Extractor With Radiomic Features + Ensemble Classifier"))
+
 
                 
 
