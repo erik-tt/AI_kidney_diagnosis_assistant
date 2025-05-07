@@ -389,7 +389,7 @@ def k_fold_validation(model_name,
             X_val, y_val = [], []
             
             X_train_radiomics, X_val_radiomics = [], []
-            
+
             if epoch != epochs - 1:
                 # TRAIN 3D CNN
                 train_model(model_weak, train_dataloader, optimizer_weak, loss_function, device, l1_lambda=0)
@@ -410,11 +410,11 @@ def k_fold_validation(model_name,
 
                         features = features.detach().cpu().numpy() 
                         radiomics = radiomics.detach().cpu().numpy() if torch.is_tensor(radiomics) else radiomics 
-                        combined_features = np.concatenate([features, radiomics], axis=1)  
-                
+
+                        X_train_radiomics.append(radiomics)
                         X_train.append(features)
                         y_train.append(labels.cpu().numpy())  
-                        X_train_radiomics.append(combined_features)
+                        #X_train_radiomics.append(combined_features)
                     
                     #VAL FEATURES
                     for batch in tqdm(val_dataloader):
@@ -423,11 +423,10 @@ def k_fold_validation(model_name,
 
                         features = features.detach().cpu().numpy() 
                         radiomics = radiomics.detach().cpu().numpy() if torch.is_tensor(radiomics) else radiomics 
-                        combined_features = np.concatenate([features, radiomics], axis=1)  
 
                         X_val.append(features)  
                         y_val.append(label.cpu().numpy())  
-                        X_val_radiomics.append(combined_features)
+                        X_val_radiomics.append(radiomics)
                 
 
                 X_train = np.concatenate(X_train, axis=0)  
@@ -436,19 +435,16 @@ def k_fold_validation(model_name,
                 X_val = np.concatenate(X_val, axis=0)  
                 y_val = np.concatenate(y_val, axis=0) 
 
-                X_train_radiomics = np.concatenate(X_train_radiomics, axis=0) 
-                X_val_radiomics = np.concatenate(X_val_radiomics, axis=0)  
+                X_train_radiomics = np.concatenate(X_train_radiomics, axis=0)  
+                X_val_radiomics = np.concatenate(X_val_radiomics, axis=0)
                 
-
                 scaler = StandardScaler()
 
                 X_train = scaler.fit_transform(X_train)
                 X_val = scaler.transform(X_val)
 
-
-                scaler2 = StandardScaler()
-                X_train_radiomics = scaler2.fit_transform(X_train_radiomics) # SCALER radiomics to ganger nå
-                X_val_radiomics = scaler2.transform(X_val_radiomics)
+                X_train_radiomics = np.concatenate([X_train, X_train_radiomics], axis=1) 
+                X_val_radiomics = np.concatenate([X_val, X_val_radiomics], axis=1) 
 
                 rf_validation_accuracy, rf_pred, svm_validation_accuracy, svm_pred, y_pred_logreg, y_pred_ensemble, logreg_validation_accuracy, et_validation_accuracy, y_pred_et, ensemble_validation_accuracy = train_models(X_train, y_train, X_val, y_val)
                 
