@@ -5,7 +5,11 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Get current script directory
 METADATA_PATH = os.path.join(BASE_DIR, "../../data/metadata.csv")  # Convert to absolute path
 
-def get_segmentation_data(datasets: Optional[List[str]]=None, suffixes: Optional[List[str]]=None):  
+def get_segmentation_data(
+    datasets: Optional[List[str]]=None, 
+    suffixes: Optional[List[str]]=None
+    ):  
+
     metadata = pd.read_csv(METADATA_PATH, usecols=["ImagePath", "SegLabelPath", "Suffix", "Database"])
     
     if datasets is not None:
@@ -20,8 +24,18 @@ def get_segmentation_data(datasets: Optional[List[str]]=None, suffixes: Optional
 
     return metadata_dict
 
-def get_classification_data(datasets: Optional[List[str]]=None, suffixes: Optional[List[str]]=None):  
-    metadata = pd.read_csv(METADATA_PATH, usecols=["TimeSeriesPath", "CKD", "Suffix", "Database"])
+def get_classification_data(
+    datasets: Optional[List[str]]=None, 
+    suffixes: Optional[List[str]]=None, 
+    radiomics: Optional[bool]=False
+    ):  
+    
+    cols = ["TimeSeriesPath", "CKD"]
+
+    if radiomics:
+        cols.append("RadiomicFeaturePath")
+
+    metadata = pd.read_csv(METADATA_PATH, usecols=cols + ["Suffix", "Database"])
     
     if datasets is not None:
         metadata = metadata[metadata["Database"].isin(datasets)]
@@ -30,12 +44,22 @@ def get_classification_data(datasets: Optional[List[str]]=None, suffixes: Option
         metadata = metadata[metadata["Suffix"].isin(suffixes)]
 
 
-    metadata = metadata[["TimeSeriesPath", "CKD"]]
-    metadata = metadata[["TimeSeriesPath", "CKD"]].dropna(subset=["CKD"])
+    metadata = metadata[cols]
+    metadata = metadata[cols].dropna(subset=["CKD"])
     metadata["CKD"] = metadata["CKD"].astype(int)
 
-    metadata.rename(columns={"TimeSeriesPath": "image", "CKD": "label"}, inplace=True)
+    rename_dict = {
+        "TimeSeriesPath": "image",
+        "CKD": "label"
+    }
+    
+    if radiomics:
+        rename_dict["RadiomicFeaturePath"] = "radiomics"
+
+    metadata.rename(columns=rename_dict, inplace=True)
+    
     metadata_dict = metadata.to_dict(orient="records")
 
     return metadata_dict
+
 
