@@ -197,10 +197,12 @@ def train_loop(model,
     
     writer.flush()
 
+saved = False ## FJERN
+
 def train_model(model, dataloader, optimizer, loss_function, device, l1_lambda = 1e-3, radiomics = False):
     model.train()
 
-    saved = False
+    global saved
 
     for batch in tqdm(dataloader):
         images, labels, noisy_label, radiomic_feats = batch["image"].to(device), batch["label"].to(device, dtype=torch.long), batch["noisy_label"].to(device, dtype=torch.float32), batch["radiomics"].to(device)
@@ -278,7 +280,7 @@ def k_fold_validation(model_name,
     train_transforms_baseline, val_transforms_baseline = transforms_selector("pretrained")
     
     labels = np.array([sample["label"] for sample in dataset])
-
+    
     for fold, (train_idx, val_idx) in enumerate(skf.split(np.zeros(len(labels)), labels)):
     
         
@@ -521,7 +523,7 @@ def k_fold_validation(model_name,
                 writer.add_text("Ensemble recall", str(recall_score(y_val, y_pred_ensemble, average=None)), fold + 1)
 
                 rf_validation_accuracy_rad, rf_pred_rad, svm_validation_accuracy_rad, svm_pred_rad, y_pred_logreg_rad, y_pred_ensemble_rad, logreg_validation_accuracy_rad, et_validation_accuracy_rad, y_pred_et_rad, ensemble_validation_accuracy_rad = train_models(X_train_radiomics, y_train, X_val_radiomics, y_val)
-                baseline_matr_pred_rad.extend(baseline_matr_pred_rad)
+                baseline_matr_pred_rad.extend(baseline_pred_rad)
                 nn_conf_matr_pred_rad.extend(nn_pred_rad)
                 rf_conf_matr_pred_rad.extend(rf_pred_rad)
                 svm_conf_matr_pred_rad.extend(svm_pred_rad)
@@ -591,7 +593,7 @@ def k_fold_validation(model_name,
     #Plot confusion matrix
     #Without rad features
     #baseline
-    writer.add_figure("BASELINE", plot_confusion_matrix(conf_matr_labels, baseline_pred, "BASELINE"))
+    writer.add_figure("BASELINE", plot_confusion_matrix(conf_matr_labels, baseline_matr_pred, "BASELINE"))
     writer.add_figure("3D CNN Feature Extractor + NN Classifier", plot_confusion_matrix(conf_matr_labels, nn_conf_matr_pred, "3D CNN Feature Extractor + NN Classifier"))
     writer.add_figure("3D CNN Feature Extractor + Logistic Regression Classifier", plot_confusion_matrix(conf_matr_labels, logreg_conf_matr_pred, "3D CNN Feature Extractor + Logistic Regression Classifier"))
     writer.add_figure("3D CNN Feature Extractor +  Extra Trees Classifier",  plot_confusion_matrix(conf_matr_labels, et_conf_matr_pred, "3D CNN Feature Extractor + Extra Trees Classifier"))
@@ -601,7 +603,7 @@ def k_fold_validation(model_name,
 
     #With rad features
     #baseline
-    writer.add_figure("BASELINE", plot_confusion_matrix(conf_matr_labels, baseline_pred_rad, "BASELINE"))
+    writer.add_figure("BASELINE RADIOMICS", plot_confusion_matrix(conf_matr_labels, baseline_matr_pred_rad, "BASELINE RADIOMICS"))
     writer.add_figure("3D CNN Feature Extractor With Radiomic Features + NN Classifier", plot_confusion_matrix(conf_matr_labels, nn_conf_matr_pred_rad, "3D CNN Feature Extractor With Radiomic Features + NN Classifier"))
     writer.add_figure("3D CNN Feature Extractor With Radiomic Features + Logistic Regression Classifier", plot_confusion_matrix(conf_matr_labels, logreg_conf_matr_pred_rad, "3D CNN Feature Extractor With Radiomic Features + Logistic Regression Classifier"))
     writer.add_figure("3D CNN Feature Extractor With Radiomic Features +  Extra Trees Classifier",  plot_confusion_matrix(conf_matr_labels, et_conf_matr_pred_rad, "3D CNN Feature Extractor With Radiomic Features + Extra Trees Classifier"))
