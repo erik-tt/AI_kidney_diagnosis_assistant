@@ -4,7 +4,8 @@ from sklearn.preprocessing import StandardScaler
 import numpy as np
 from sklearn.impute import SimpleImputer
 
-class ClassificationDataset(Dataset):
+#Use dataset if it crashes
+class ClassificationDataset(CacheDataset):
     def __init__(self, data_list, radiomics: bool, train: bool, start_frame=0, end_frame=None, agg="time_series", transforms=None):
         
         valid_agg_options = {"mean", "time_series"}
