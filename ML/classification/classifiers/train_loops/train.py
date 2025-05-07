@@ -220,7 +220,7 @@ def train_model(model, dataloader, optimizer, loss_function, device, l1_lambda =
                 plt.imshow(images[0,0, 100, :, :].cpu().numpy(), cmap='gray')
                 plt.axis('off')
                 plt.savefig('control_image.png', bbox_inches='tight', pad_inches=0)
-                saved == True
+                saved = True
 
 
 
