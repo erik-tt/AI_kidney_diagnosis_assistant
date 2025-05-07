@@ -16,7 +16,7 @@ class ClassificationDataset(CacheDataset):
         if end_frame is not None and end_frame <= start_frame:
             raise ValueError(f"Invalid end_frame={end_frame}: Must be greater than start_frame={start_frame}.")
 
-        super().__init__(data=data_list, transform=transforms)
+        super().__init__(data=data_list, transform=transforms, cache_rate=0.8)
 
         self.start_frame = start_frame
         self.end_frame = end_frame
