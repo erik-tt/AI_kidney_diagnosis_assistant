@@ -35,7 +35,7 @@ def main(params):
     os.makedirs("./classification_models", exist_ok=True)
 
     base_log_dir = os.path.abspath("./runs")
-    log_dir = os.path.join(base_log_dir, f"{params.model}_0.0001_{timestamp}")
+    log_dir = os.path.join(base_log_dir, f"{params.model}_{params.data_dir}_{timestamp}")
     os.makedirs(log_dir, exist_ok=True) 
 
     writer = SummaryWriter(log_dir=log_dir)
