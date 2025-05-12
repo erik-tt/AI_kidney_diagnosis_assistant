@@ -37,7 +37,7 @@ def transforms_selector(transforms_name :str):
             # FOR NOT CUDA
             Lambdad(keys=["image"], func=lambda x: x.permute(0,2,1,3)),
             
-            SpatialPadd(keys=["image"], spatial_size=(180, -1, -1)),
+            SpatialPadd(keys=["image"], spatial_size=(180, -1, -1), method="end"),
             RandFlipd(keys="image", spatial_axis=2, prob=0.5),
         ]
 
