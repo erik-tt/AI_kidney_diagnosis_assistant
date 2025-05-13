@@ -496,7 +496,7 @@ def k_fold_validation(model_name,
                 print(f"3D CNN + NN precision: {precision_3d_nn}")
                 writer.add_text("3D CNN + NN  precision", str(precision_3d_nn), fold + 1)
                 print(f"3D CNN + NN  recall: {recall_3d_nn}")
-                writer.add_text("B3D CNN + NN recall", str(recall_3d_nn), fold + 1)
+                writer.add_text("3D CNN + NN recall", str(recall_3d_nn), fold + 1)
 
                 print("\n")
                 print(f"KNN acc {knn_validation_accuracy}")
@@ -562,7 +562,7 @@ def k_fold_validation(model_name,
                 print(f"3D CNN + NN RADIOMICS acc: {accuracy_3d_nn_radiomics}")
                 writer.add_scalar("3D CNN + NN  RADIOMICS acc", accuracy_3d_nn_radiomics, fold + 1)
                 print(f"3D CNN + NN  RADIOMICS precision: {precision_3d_nn_radiomics}")
-                writer.add_text("B3D CNN + NN  RADIOMICS precision", str(precision_3d_nn_radiomics), fold + 1)
+                writer.add_text("3D CNN + NN  RADIOMICS precision", str(precision_3d_nn_radiomics), fold + 1)
                 print(f"3D CNN + NN  RADIOMICS recall: {recall_3d_nn_radiomics}")
                 writer.add_text("3D CNN + NN RADIOMICS recall", str(recall_3d_nn_radiomics), fold + 1)
 
@@ -639,7 +639,7 @@ def train_models(X_train, y_train, X_val, y_val):
     y_pred_rf = rf_model.predict(X_val)
     rf_validation_accuracy = accuracy_score(y_val, y_pred_rf)
 
-    et_model = ExtraTreesClassifier(n_estimators=100, min_samples_leaf=2 , max_features=1.0, bootstrap=True, random_state=42)
+    et_model = ExtraTreesClassifier(n_estimators=100, min_samples_leaf=2, random_state=42)
     et_model.fit(X_train, y_train)
     y_pred_et = et_model.predict(X_val)
     et_validation_accuracy = accuracy_score(y_val, y_pred_et)
