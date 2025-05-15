@@ -28,54 +28,55 @@ def extract_radiomic_features(image_series, mask, save_path):
     static_extractor = RadiomicsFeatureExtractor()
     static_extractor.loadParams(static_path)
 
-    mask_array[(mask_array == 38) | (mask_array == 75)] = 1 
-
     time_features_all = []
-
-    static_feature_names = None
     static_features = []
 
-    time_extractor.settings['label'] = 1
-
-    mask = sitk.GetImageFromArray(mask_array)
+    kidney_labels = [38, 75]
 
     mean_all = np.mean(image_array, axis=0)
-    mean_all = sitk.GetImageFromArray(mean_all)
 
-    mean_all_results = time_extractor.execute(mean_all, mask)
-    names = list(mean_all_results.keys()) # FIXE NAMES
-
-
-    for t in range(image_array.shape[0]):
-        image_slice = sitk.GetImageFromArray(image_array[t])
+    for region in kidney_labels:
         
-        for region in np.unique(mask_array):
-            if region == 0:
-                continue 
-            
-            if t == 0:
-                static_extractor.settings['label'] = int(region)
+        binary_mask_array = (mask_array == region).astype(np.uint8)
+        binary_mask = sitk.GetImageFromArray(binary_mask_array)
 
-                static_results = static_extractor.execute(image_slice, mask)
+        if np.sum(binary_mask_array) == 0:
+            print("Missing Kidney")
+            continue 
 
-                static_feature_names = list(static_results.keys())
-                static_values = [static_results[feature].item() for feature in static_feature_names]  
-                static_features.append([save_path] + static_values)
+        mean_all_image = sitk.GetImageFromArray(mean_all)
+        static_extractor.settings['label'] = 1
+        static_results = static_extractor.execute(mean_all_image, binary_mask)
 
+        static_feature_names = list(static_results.keys())
+        static_values = [static_results[feature].item() for feature in static_feature_names]
+        static_features.append([save_path, region] + static_values)
 
-            time_extractor.settings['label'] = int(region)
-            time_results = time_extractor.execute(image_slice, mask)
+        for t in range(image_array.shape[0]):
+            image_slice = sitk.GetImageFromArray(image_array[t])
+            time_extractor.settings['label'] = 1
+            time_results = time_extractor.execute(image_slice, binary_mask)
 
+            if t == 0 and region == kidney_labels[0]:
+                names = list(time_results.keys())
 
-            feature_values = [time_results[feature].item() for feature in names]  
-            time_features_all.append([save_path, t] + feature_values)
-        
+            feature_values = [time_results[feature].item() for feature in names]
+            time_features_all.append([save_path, region, t] + feature_values)
+
     time_all_names = ["time_all_" + name for name in names]
+    time_features_all_df = pd.DataFrame(time_features_all, columns=["id", "kidney_label", "timestep"] + time_all_names)
+    static_features_df = pd.DataFrame(static_features, columns=["id", "kidney_label"] + static_feature_names)
 
-    time_features_all_df = pd.DataFrame(time_features_all, columns=["id", "timestep"] + time_all_names)
-    static_features_df = pd.DataFrame(static_features, columns=["id"] + static_feature_names)
+    static_features_wide = static_features_df.pivot(index='id', columns='kidney_label')
 
-    return time_features_all_df, static_features_df
+    static_features_wide.columns = [
+        f"{k}_{feature}" for k, feature in static_features_wide.columns
+    ]
+
+    static_features_wide = static_features_wide.reset_index()
+
+    return time_features_all_df, static_features_wide
+
     
 def save_radiomic_features(metadata):
 
@@ -101,14 +102,33 @@ def save_radiomic_features(metadata):
 
     static_features_df = static_features_df.set_index("id")
 
-    extracted_features_all = extract_features(time_features_all_df, column_id="id", column_sort="timestep", default_fc_parameters=MinimalFCParameters())
-    extracted_features_all.index = extracted_features_all.index.get_level_values(0)
+    tsfresh_per_kidney = []
+    for kidney_region in [38, 75]:
+        kidney_df = time_features_all_df[time_features_all_df["kidney_label"] == kidney_region].copy()
+        
+        extracted = extract_features(
+            kidney_df.drop(columns=["kidney_label"]),
+            column_id="id",
+            column_sort="timestep",
+            default_fc_parameters=MinimalFCParameters()
+        )
+
+        
+        suffix = "_left" if kidney_region == 38 else "_right"
+        extracted.columns = [f"{col}{suffix}" for col in extracted.columns]
+
+        extracted = extracted.reset_index()
+        print(extracted["index"])
+        tsfresh_per_kidney.append(extracted)
+
+    tsfresh_left, tsfresh_right = tsfresh_per_kidney
+    extracted_features_all = pd.merge(tsfresh_left, tsfresh_right, on="index", how="outer")
+    extracted_features_all = extracted_features_all.set_index("index")
 
     all_features = pd.concat([
         static_features_df, 
         extracted_features_all, 
     ], axis=1)
-
 
     feature_names = all_features.columns
     for index, row in all_features.iterrows():
@@ -130,7 +150,6 @@ def save_radiomic_features(metadata):
     os.makedirs(data_dir, exist_ok=True)  
 
     metadata_path = os.path.join(data_dir, "metadata.csv")
-    print(metadata_path)
     metadata.to_csv(metadata_path, index=False)
 
 ## NB DETTE ER FRA GROUND TRUTH SEGMENTATION LABELS

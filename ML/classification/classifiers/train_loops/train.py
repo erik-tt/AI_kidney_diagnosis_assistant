@@ -366,10 +366,10 @@ def k_fold_validation(model_name,
                                             )
         
         ## GET SCALER, IMPUTER AND NAN COLS FROM TRAIN SET TO VAL SET FOR RADIOMICS
-        val_ds.scaler, val_ds.imputer, val_ds.nan_cols = train_ds.get_objects()
-        feature_ds.scaler, feature_ds.imputer, feature_ds.nan_cols = train_ds.get_objects()
+        val_ds.scaler = train_ds.get_scaler()
+        feature_ds.scaler = train_ds.get_scaler()
 
-        val_ds_baseline.scaler, val_ds_baseline.imputer, val_ds_baseline.nan_cols = train_ds_baseline.get_objects()
+        val_ds_baseline.scaler = train_ds_baseline.get_scaler()
 
         # INITIALIZE DATALOADERS
         train_dataloader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers) 
