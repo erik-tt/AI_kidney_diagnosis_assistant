@@ -104,9 +104,13 @@ def train(model,
 
         # L1 REGULARIZATION
 
-        #l1_lambda = 1e-2 for baseline eller -3
-        l1_lambda = 0
-        l1_norm = sum(p.abs().sum() for p in model.fc.parameters())
+        l1_lambda = 1e-3
+        l1_norm = sum(
+            p.abs().sum()
+            for p in model.fc.parameters()
+            if p.ndim > 1  # exclude biases (which are 1D)
+        )
+
         loss = loss + l1_lambda * l1_norm
 
         loss.backward()
@@ -255,7 +259,12 @@ def train_model(model, dataloader, optimizer, loss_function, device, l1_lambda =
         loss = loss_function(outputs, labels)
 
         # L1 REGULARIZATION
-        l1_norm = sum(p.abs().sum() for p in model.fc.parameters())
+        l1_norm = sum(
+            p.abs().sum()
+            for p in model.fc.parameters()
+            if p.ndim > 1 
+        )
+
         loss = loss + l1_lambda * l1_norm
         
         loss.backward()
@@ -406,15 +415,15 @@ def k_fold_validation(model_name,
         _, accuracy_3d_nn_radiomics, nn_pred_rad, precision_3d_nn_radiomics, recall_3d_nn_radiomics = validate(model_radiomics, loss_function, val_dataloader, device, optimizer_radiomics, epoch, radiomics=True) 
 
         print("\n TRAINING 3D CNN")
-        for epoch in range(epochs):
+        for epoch in range(epochs + 1):
             print("-" * 10)
-            print(f"epoch {epoch + 1}/{epochs}")
+            print(f"epoch {epoch + 1}/{epochs + 1}")
             X_train, y_train = [], []
             X_val, y_val = [], []
             
             X_train_radiomics, X_val_radiomics = [], []
 
-            if epoch != epochs - 1:
+            if epoch != epochs:
                 # TRAIN 3D CNN
                 train_model(model_weak, train_dataloader, optimizer_weak, loss_function, device, l1_lambda=0)
             else:
@@ -660,13 +669,13 @@ def train_models(X_train, y_train, X_val, y_val):
     voting_clf = VotingClassifier(
         estimators=[
             ('svc', svm_model_prob),
-            ('logreg', knn_model),
+            #('logreg', knn_model),
             ('rf', rf_model),
             ('et', et_model),
         ],
         voting='soft'
     )
-
+    
     voting_clf.fit(X_train, y_train)
     y_pred_ensemble = voting_clf.predict(X_val)
     ensemble_validation_accuracy = accuracy_score(y_val, y_pred_ensemble)
