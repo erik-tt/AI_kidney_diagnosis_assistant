@@ -46,7 +46,7 @@ def create_dataset(transforms_name: str,
                                             train=False
                                             )
 
-    test_dataset.scaler, test_dataset.imputer, test_dataset.nan_cols = train_dataset.get_objects()
+    test_dataset.scaler = train_dataset.get_scaler()
 
     sample = train_dataset[0]["image"]
     print(f"Loaded image shape: {sample.shape}")

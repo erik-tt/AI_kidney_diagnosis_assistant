@@ -23,7 +23,7 @@ class CNNWeakRadiomics(nn.Module):
                 param.requires_grad = True
         
         self.fc = nn.Sequential(
-            nn.Linear(4011, 64),
+            nn.Linear(4950, 64),
             nn.ReLU(),
             nn.Linear(64, num_classes)
         )
@@ -116,7 +116,7 @@ class Resnet18Radiomics(nn.Module):
         self.backbone.fc = nn.Identity()     
 
         self.fc = nn.Sequential(
-            nn.Linear(self.backbone_fc.in_features + 939, 64),
+            nn.Linear(self.backbone_fc.in_features + 1878, 64),
             nn.ReLU(),
             nn.Linear(64, num_classes)
         )

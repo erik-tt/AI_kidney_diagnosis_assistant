@@ -4,7 +4,8 @@ from sklearn.preprocessing import StandardScaler
 import numpy as np
 from sklearn.impute import SimpleImputer
 
-class ClassificationDataset(Dataset):
+#Use dataset if it crashes
+class ClassificationDataset(CacheDataset):
     def __init__(self, data_list, radiomics: bool, train: bool, start_frame=0, end_frame=None, agg="time_series", transforms=None):
         
         valid_agg_options = {"mean", "time_series"}
@@ -21,8 +22,6 @@ class ClassificationDataset(Dataset):
         self.end_frame = end_frame
         self.agg = agg
         self.scaler = StandardScaler()
-        self.imputer = SimpleImputer(strategy='mean')
-        self.nan_cols = None
         self.radiomics = radiomics
         
         ## FIT SCALER AND IMPUTER TO TRAINING DATA
@@ -42,15 +41,10 @@ class ClassificationDataset(Dataset):
                 all_labels.append(label)
 
             all_features = np.concatenate(all_features, axis=0)
-            all_labels = np.array(all_labels)   
+            all_labels = np.array(all_labels)  
 
-            all_features[np.isinf(all_features)] = np.nan
-            self.nan_cols = np.all(np.isnan(all_features), axis=0)
-            all_features = all_features[:, ~self.nan_cols]
-
-            all_features = self.imputer.fit_transform(all_features)
-
-            self.scaler.fit(all_features)
+            valid_rows = ~np.isnan(all_features).any(axis=1)
+            self.scaler.fit(all_features[valid_rows]) 
 
     def __getitem__(self, idx):
         # LOAD SAMPLE
@@ -67,12 +61,8 @@ class ClassificationDataset(Dataset):
             radiomics = np.load(sample["radiomics"], allow_pickle=True)
             feature_values = radiomics["feature_values"]
 
-            feature_values[np.isinf(feature_values)] = np.nan
-
-            feature_values = feature_values[:, ~self.nan_cols]
-            feature_values = self.imputer.transform(feature_values)
-
             feature_values = self.scaler.transform(feature_values)
+            feature_values = np.nan_to_num(feature_values, nan=0.0)
             scaled_features = feature_values.squeeze(0)
 
         # NOISY LABEL CREATION
@@ -98,5 +88,5 @@ class ClassificationDataset(Dataset):
         return {"image": image, "label": label, "noisy_label": noisy_label, "radiomics": scaled_features}
     
     # RETURN IMPORT OBJECTS FOR VAL SET
-    def get_objects(self):
-        return self.scaler, self.imputer, self.nan_cols
+    def get_scaler(self):
+        return self.scaler
